@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>도면 BOM 뷰어</title>
+  <link rel="stylesheet" href="css/bom.css">
+</head>
+<body>
+  <div class="bom-app">
+    <header class="bom-header">
+      <div class="title-wrap">
+        <a href="index.html" class="back-link" title="메인 대시보드">← 대시보드</a>
+        <h1>🛠️ 도면 BOM 뷰어</h1>
+        <div class="drawing-meta">
+          <input id="projectName" class="meta-input" placeholder="도면명" />
+          <input id="drawingNo" class="meta-input small" placeholder="도면번호" />
+        </div>
+      </div>
+      <div class="toolbar">
+        <label class="btn btn-light">📐 도면 불러오기
+          <input type="file" id="drawingFile" accept="image/*,.pdf,application/pdf" hidden>
+        </label>
+        <label class="btn btn-light">📋 BOM 불러오기
+          <input type="file" id="bomFile" accept=".xlsx,.xls,.csv" hidden>
+        </label>
+        <button class="btn btn-light" id="exportBtn">💾 프로젝트 저장</button>
+        <label class="btn btn-light">📂 프로젝트 열기
+          <input type="file" id="projectFile" accept=".json" hidden>
+        </label>
+        <button class="btn btn-light" id="sampleBtn">🔁 샘플</button>
+      </div>
+    </header>
+
+    <main class="bom-main">
+      <section class="drawing-panel">
+        <div class="drawing-toolbar">
+          <button class="icon-btn" id="zoomIn" title="확대">＋</button>
+          <button class="icon-btn" id="zoomOut" title="축소">－</button>
+          <button class="icon-btn" id="zoomFit" title="화면 맞춤">⤢</button>
+          <span class="zoom-label" id="zoomLabel">100%</span>
+          <span class="divider"></span>
+          <button class="btn-toggle" id="editToggle">✏️ 벌룬 편집</button>
+          <button class="btn-toggle" id="autoDetectBtn" title="PDF 도면의 원형 벌룬+번호 자동 인식" disabled>🎯 벌룬 자동 인식</button>
+          <span class="edit-hint">편집 모드: 빈 곳 클릭 = 벌룬 추가 · 드래그 = 이동 · 클릭 = 삭제</span>
+        </div>
+        <div class="viewport" id="viewport">
+          <div class="canvas" id="canvas">
+            <img id="drawingImg" alt="도면" draggable="false">
+            <div class="hotspot-layer" id="hotspotLayer"></div>
+          </div>
+          <div class="empty-msg" id="emptyMsg">도면(PDF/PNG/JPG/SVG)을 불러오세요 · 파일은 브라우저 안에서만 처리됨</div>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="detail-card" id="detailCard"></div>
+
+        <div class="bom-card">
+          <div class="bom-card-header">
+            <h2>BOM <span class="count" id="bomCount">0</span></h2>
+            <input type="search" id="bomSearch" placeholder="번호·품명·사양 검색">
+          </div>
+          <div class="summary" id="summary"></div>
+          <div class="table-wrap">
+            <table class="bom-table">
+              <thead id="bomHead"></thead>
+              <tbody id="bomBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="js/bom.js"></script>
+</body>
+</html>

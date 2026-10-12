@@ -1,0 +1,7 @@
+# 사내 도면·BOM·프로젝트 파일은 public repo에 커밋 금지
+*.pdf
+*.xlsx
+*.xls
+*.dwg
+*.dxf
+*.bom.json
