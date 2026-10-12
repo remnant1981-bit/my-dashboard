@@ -1,0 +1,39 @@
+name: Build desktop app
+
+on:
+  push:
+    paths:
+      - 'bom.html'
+      - 'index.html'
+      - 'css/**'
+      - 'js/**'
+      - 'desktop/**'
+      - '.github/workflows/build-desktop.yml'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install
+        working-directory: desktop
+        run: npm ci --no-audit --no-fund
+
+      - name: Build Windows x64
+        working-directory: desktop
+        run: npm run build:win
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: SMG-BOM-Viewer-win32-x64
+          path: desktop/dist/SMG-BOM-Viewer-win32-x64
+          retention-days: 30
