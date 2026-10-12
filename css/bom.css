@@ -513,6 +513,48 @@ body {
 .chip.warn { background: #fef3c7; color: #b45309; }
 .chip.bad { background: #fee2e2; color: #b91c1c; }
 
+/* ---------- 벌룬 번호 입력 대화상자 ---------- */
+.item-dialog {
+  margin: auto;
+  border: none;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  width: 300px;
+}
+
+.item-dialog::backdrop {
+  background: rgba(17, 24, 39, 0.4);
+}
+
+.item-dialog label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.item-dialog input {
+  width: 100%;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 1em;
+}
+
+/* Enter 키 = 첫 번째 버튼(추가)이 되도록 DOM 순서 유지, 표시는 역순 */
+.dialog-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;

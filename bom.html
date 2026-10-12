@@ -73,6 +73,18 @@
     </main>
   </div>
 
+  <dialog class="item-dialog" id="itemDialog">
+    <form method="dialog">
+      <label for="itemInput">부품 번호(벌룬) 입력</label>
+      <input id="itemInput" list="itemOptions" autocomplete="off">
+      <datalist id="itemOptions"></datalist>
+      <div class="dialog-actions">
+        <button value="ok" class="btn btn-primary">추가</button>
+        <button value="cancel" class="btn btn-light">취소</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast"></div>
   <script src="js/bom.js"></script>
 </body>

@@ -4,11 +4,12 @@
 // - 모든 파일은 브라우저 안에서만 처리 (서버 업로드 없음)
 // =========================================================
 
-const LIBS = {
+// 데스크톱 앱(오프라인)에서는 window.BOM_LIBS 로 로컬 경로 지정
+const LIBS = Object.assign({
   pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
   xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
-};
+}, window.BOM_LIBS);
 
 // 헤더 자동 인식 패턴
 const COL = {
@@ -697,16 +698,30 @@ els.viewport.addEventListener('pointerup', e => {
   }
   if (state.edit) {
     const placed = new Set(p.hotspots.map(h => h.item));
-    const next = p.rows.find(r => !placed.has(r.item));
-    const item = prompt('부품 번호(벌룬) 입력', next ? next.item : '');
-    if (!item || !item.trim()) return;
+    const unplaced = p.rows.filter(r => !placed.has(r.item)).map(r => r.item);
     const pt = toDrawingPct(e.clientX, e.clientY);
-    p.hotspots.push({ item: normItem(item), x: +pt.x.toFixed(3), y: +pt.y.toFixed(3), r: medianR() });
-    renderHotspots();
-    renderTable();
-    saveProject();
+    askItem(unplaced).then(item => {
+      if (!item) return;
+      p.hotspots.push({ item: normItem(item), x: +pt.x.toFixed(3), y: +pt.y.toFixed(3), r: medianR() });
+      renderHotspots();
+      renderTable();
+      saveProject();
+    });
   }
 });
+
+// 벌룬 번호 입력 대화상자 (window.prompt 는 데스크톱 앱에서 미지원)
+function askItem(suggestions) {
+  const dlg = $('itemDialog');
+  const input = $('itemInput');
+  $('itemOptions').innerHTML = suggestions.map(v => `<option value="${esc(v)}">`).join('');
+  input.value = suggestions[0] || '';
+  dlg.showModal();
+  input.select();
+  return new Promise(resolve => {
+    dlg.onclose = () => resolve(dlg.returnValue === 'ok' ? input.value.trim() : '');
+  });
+}
 
 els.viewport.addEventListener('wheel', e => {
   if (!state.project.image) return;
