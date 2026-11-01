@@ -11,6 +11,7 @@
 | `samples/02_excel_report.py` | 파일 취합 → 요약 보고서 (cp949·잠금파일·재실행 중복 방지·필수컬럼) | `tests/` 단위 7건 |
 | `samples/03_scheduled_notify.py` | 주기 확인 + 변경 감지 (HTTP오류 오탐 방지·selector·실패알림 1회) | `tests/` 단위 5건 |
 | `samples/04_dynamic_scraper_selenium.py` | JS 동적 페이지 + 페이지 넘김 (필드 선택자 외부화) | `tests/` 로컬서버+실제 Chrome 통합 2건 + 파서 1건 |
+| `sample_output/` | 샘플 실행 결과 (01 실사이트 2페이지 20건, 02 취합) | 깨끗한 venv에서 직접 실행 |
 | `templates/` | 견적서·문진표·면책 문구, 납품 가이드, 법적 유의, 알림 구현 예시 | 문서 |
 | `listing_kmong.md` / `listing_soomgo.md` | 상품·프로필 초안 | 본인 검토 필요 |
 | `contract_checklist.md` | 겸업 선행조건·계약·세무 | 문서 |
@@ -19,7 +20,7 @@
 ## 실행 / 검증
 ```bash
 pip install -r samples/requirements.txt -r requirements-dev.txt
-python -m pytest -q tests      # 현재 20건. Chrome 없으면 Selenium 통합 2건은 skip
+python -m pytest -q tests      # 현재 20건 (깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
 ```
 
 ## 알려진 제약
