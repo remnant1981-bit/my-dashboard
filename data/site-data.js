@@ -44,7 +44,7 @@ window.SMG_DEFAULT_DATA = {
     { "value": "1990", "label": "설립연도", "suffix": "" },
     { "value": "35", "label": "제조 업력", "suffix": "년+" },
     { "value": "20", "label": "제품 라인업", "suffix": "종+" },
-    { "value": "7", "label": "방폭·선급 인증 체계", "suffix": "" }
+    { "value": "8", "label": "보유 인증 (방폭·선급·ISO)", "suffix": "종" }
   ],
   "about": {
     "title": "A Higher Degree of Confidence for SMG Products",
