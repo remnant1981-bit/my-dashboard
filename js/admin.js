@@ -1,26 +1,40 @@
 /* SMG CMS — 정적 사이트용 관리자 (브라우저 내 편집 → 게시 파일 생성 / GitHub 직접 게시) */
 (function () {
   'use strict';
-  const DRAFT_KEY = 'smg_draft_v1', INQ_KEY = 'smg_inquiries_v1', GH_KEY = 'smg_gh_cfg', AUTH_KEY = 'smg_admin_auth';
+  const DRAFT_KEYS = { ko: 'smg_draft_v1', en: 'smg_draft_en_v1' }, INQ_KEY = 'smg_inquiries_v1', GH_KEY = 'smg_gh_cfg', AUTH_KEY = 'smg_admin_auth', LANG_KEY = 'smg_admin_lang';
+  const FILES = { ko: ['data/site-data.js', 'SMG_DEFAULT_DATA', '국문'], en: ['data/site-data-en.js', 'SMG_DATA_EN', '영문'] };
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { toast('브라우저 저장 공간이 부족합니다. 이미지 용량을 줄여주세요.'); return false; } }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
-  const PUBLISHED = window.SMG_DEFAULT_DATA;
-  let D;
-  try { D = JSON.parse(ls.get(DRAFT_KEY)) || clone(PUBLISHED); } catch (e) { D = clone(PUBLISHED); }
-  // 게시본 데이터 구조가 새 버전이면(카탈로그 개편 등) 이전 임시저장본은 폐기
-  if ((D.version || 1) < (PUBLISHED.version || 1)) { D = clone(PUBLISHED); try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
-  // schema migration: ensure all keys exist
-  Object.keys(PUBLISHED).forEach((k) => { if (D[k] === undefined) D[k] = clone(PUBLISHED[k]); });
-  Object.keys(PUBLISHED.settings).forEach((k) => { if (D.settings[k] === undefined) D.settings[k] = PUBLISHED.settings[k]; });
+  const PUB = { ko: window.SMG_DEFAULT_DATA, en: window.SMG_DATA_EN || null };
+  function loadDraft(l) {
+    const P = PUB[l]; let d = null;
+    try { d = JSON.parse(ls.get(DRAFT_KEYS[l])); } catch (e) { d = null; }
+    // 게시본 데이터 구조가 새 버전이면(카탈로그 개편 등) 이전 임시저장본은 폐기
+    if (!d || (d.version || 1) < (P.version || 1)) d = clone(P);
+    Object.keys(P).forEach((k) => { if (d[k] === undefined) d[k] = clone(P[k]); });
+    if (P.settings) Object.keys(P.settings).forEach((k) => { if (d.settings[k] === undefined) d.settings[k] = P.settings[k]; });
+    return d;
+  }
+  const DATA = { ko: loadDraft('ko'), en: PUB.en ? loadDraft('en') : null };
+  let LANG = ls.get(LANG_KEY) === 'en' && DATA.en ? 'en' : 'ko';
+  let D = DATA[LANG], PUBLISHED = PUB[LANG];
+  function setLang(l) { if (!DATA[l]) return; LANG = l; ls.set(LANG_KEY, l); D = DATA[l]; PUBLISHED = PUB[l]; drawLang(); save(); go(cur === 'settings' || cur === 'inq' ? cur : cur); toast((l === 'en' ? '영문(EN)' : '국문(KO)') + ' 콘텐츠 편집 중'); }
+  function drawLang() {
+    const el = $('#lang-tg'); if (!el) return;
+    el.innerHTML = ['ko', 'en'].filter((l) => DATA[l]).map((l) => `<button class="${l === LANG ? 'on' : ''}" data-l="${l}">${l.toUpperCase()}</button>`).join('');
+    $$('button', el).forEach((b) => (b.onclick = () => setLang(b.dataset.l)));
+  }
 
   function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2800); }
-  function dirtyState() { return JSON.stringify(D) !== JSON.stringify(PUBLISHED); }
+  const dirtyOf = (l) => !!DATA[l] && JSON.stringify(DATA[l]) !== JSON.stringify(PUB[l]);
+  function dirtyState() { return dirtyOf('ko') || dirtyOf('en'); }
   function save() {
     D.updatedAt = new Date().toISOString().slice(0, 10);
-    ls.set(DRAFT_KEY, JSON.stringify(D));
+    DATA[LANG] = D;
+    ls.set(DRAFT_KEYS.ko, JSON.stringify(DATA.ko)); if (DATA.en) ls.set(DRAFT_KEYS.en, JSON.stringify(DATA.en));
     const s = $('#save-state'); const d = dirtyState();
     s.textContent = d ? '임시저장됨 · 미게시 변경사항 있음' : '게시본과 동일'; s.classList.toggle('dirty', d);
   }
@@ -30,7 +44,7 @@
     if (window.crypto && crypto.subtle) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join(''); }
     let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return 'x' + h;
   }
-  async function expectedHash() { return D.settings.adminHash || (await sha('smg1234!')); }
+  async function expectedHash() { return DATA.ko.settings.adminHash || (await sha('smg1234!')); }
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const ok = (await sha($('#pw').value)) === (await expectedHash());
@@ -59,11 +73,11 @@
 
   function start() {
     $('#login').hidden = true; $('#app').hidden = false;
-    drawMenu(); save();
+    drawLang(); drawMenu(); save();
     const h = location.hash.slice(1); go(VIEWS[h] ? h : 'dash');
     $('#logout').onclick = () => { try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {} location.reload(); };
     $('#menu-btn').onclick = () => $('.side').classList.toggle('open');
-    $('#btn-preview').onclick = () => { try { sessionStorage.setItem('smg_preview', '1'); } catch (e) {} window.open('index.html?preview=1', '_blank'); };
+    $('#btn-preview').onclick = () => { try { sessionStorage.setItem('smg_preview', '1'); } catch (e) {} window.open((LANG === 'en' ? 'en/' : '') + 'index.html?preview=1', '_blank'); };
     $('#btn-publish').onclick = () => go('publish');
     addEventListener('beforeunload', (e) => { if (dirtyState()) { e.preventDefault(); e.returnValue = ''; } });
   }
@@ -227,7 +241,7 @@
       const tb = $('tbody', el);
       const persist = () => { ls.set(INQ_KEY, JSON.stringify(all)); drawMenu(); };
       function draw() {
-        tb.innerHTML = all.map((q, i) => ({ q, i })).filter(({ q }) => !fs || q.status === fs).map(({ q, i }) => `<tr><td>${esc(q.createdAt.replace('T', ' ').slice(0, 16))}</td><td>${esc(q.type)}</td><td>${esc(q.product || '-')}</td><td><b>${esc(q.company)}</b><br>${esc(q.name)}</td><td>${esc(q.phone)}<br><a href="mailto:${esc(q.email)}">${esc(q.email)}</a></td><td><select data-st="${i}">${['신규', '처리중', '완료'].map((s) => `<option ${s === q.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td><td><div class="act"><button class="b b-line b-sm" data-v="${i}">보기</button><a class="b b-dark b-sm" href="mailto:${esc(q.email)}?subject=${encodeURIComponent('[SMG] 문의 회신: ' + q.type)}">회신</a><button class="b b-del b-sm" data-rm="${i}">삭제</button></div></td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">문의가 없습니다</td></tr>';
+        tb.innerHTML = all.map((q, i) => ({ q, i })).filter(({ q }) => !fs || q.status === fs).map(({ q, i }) => `<tr><td>${esc(q.createdAt.replace('T', ' ').slice(0, 16))}</td><td>${q.lang === 'EN' ? '<span class="badge">EN</span> ' : ''}${esc(q.type)}</td><td>${esc(q.product || '-')}</td><td><b>${esc(q.company)}</b><br>${esc(q.name)}</td><td>${esc(q.phone)}<br><a href="mailto:${esc(q.email)}">${esc(q.email)}</a></td><td><select data-st="${i}">${['신규', '처리중', '완료'].map((s) => `<option ${s === q.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td><td><div class="act"><button class="b b-line b-sm" data-v="${i}">보기</button><a class="b b-dark b-sm" href="mailto:${esc(q.email)}?subject=${encodeURIComponent('[SMG] 문의 회신: ' + q.type)}">회신</a><button class="b b-del b-sm" data-rm="${i}">삭제</button></div></td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">문의가 없습니다</td></tr>';
       }
       draw();
       $('[data-fs]', el).onchange = (e) => { fs = e.target.value; draw(); };
@@ -356,7 +370,8 @@
     },
 
     settings(el) {
-      const s = D.settings;
+      const s = DATA.ko.settings; // 운영 설정은 국문/영문 공통
+      el.insertAdjacentHTML('beforeend', '<div class="note">설정(문의 수신, 팝업, 카탈로그, 비밀번호)은 국문·영문 사이트에 <b>공통</b>으로 적용됩니다.</div>');
       formCard(el, '문의 폼 수신', '방문자 문의를 메일로 받기 위한 설정', [
         { k: 'formEndpoint', label: '폼 수신 주소 (Endpoint URL)', full: true, ph: 'https://formspree.io/f/xxxxxxx', hint: 'Formspree·Getform·Web3Forms 등 JSON POST를 받는 서비스 주소. 비워두면 방문자 메일 앱으로 발송.' },
         { k: 'notifyEmail', label: '문의 수신 이메일 (메일 앱 방식)', full: true }], s);
@@ -371,28 +386,35 @@
       let gh = {}; try { gh = JSON.parse(ls.get(GH_KEY) || '{}'); } catch (e) {}
       const changed = dirtyState();
       el.innerHTML = `<div class="note ${changed ? 'warn' : ''}">${changed ? '<b>미게시 변경사항이 있습니다.</b> 아래 방법 중 하나로 게시하세요.' : '현재 임시저장 내용이 게시본과 동일합니다.'}</div>
-      <div class="card"><h2>방법 1. GitHub 직접 게시 (권장)</h2><div class="desc">GitHub Pages/Netlify/Vercel 등 저장소 연동 호스팅 사용 시, 버튼 한 번으로 <code>data/site-data.js</code>를 커밋하여 1~2분 내 사이트에 반영됩니다.</div>
+      <div class="card"><h2>방법 1. GitHub 직접 게시 (권장)</h2><div class="desc">GitHub Pages/Netlify/Vercel 등 저장소 연동 호스팅 사용 시, 버튼 한 번으로 <code>data/site-data.js</code>(국문)·<code>data/site-data-en.js</code>(영문) 중 변경된 파일을 커밋하여 1~2분 내 사이트에 반영됩니다. 현재: 국문 ${dirtyOf('ko') ? '<b style="color:#b54708">변경됨</b>' : '변경 없음'} · 영문 ${dirtyOf('en') ? '<b style="color:#b54708">변경됨</b>' : '변경 없음'}</div>
         <div class="fg"><label class="f"><span>저장소 (owner/repo)</span><input id="gh-repo" value="${esc(gh.repo || 'remnant1981-bit/my-dashboard')}"></label><label class="f"><span>브랜치</span><input id="gh-br" value="${esc(gh.branch || 'main')}"></label>
         <label class="f full"><span>GitHub Personal Access Token</span><input id="gh-tok" type="password" placeholder="github_pat_... (Contents: Read & Write 권한)" autocomplete="off"><small>토큰은 저장되지 않으며 이 창을 닫으면 사라집니다. GitHub → Settings → Developer settings → Fine-grained tokens에서 해당 저장소 Contents 쓰기 권한으로 발급.</small></label></div>
         <div style="margin-top:14px;display:flex;justify-content:flex-end"><button class="b b-pri" id="gh-go">GitHub에 게시</button></div></div>
-      <div class="card"><h2>방법 2. 파일 내려받아 업로드</h2><div class="desc">일반 웹호스팅(FTP) 사용 시: 파일을 내려받아 서버의 <code>data/site-data.js</code>에 덮어쓰기.</div><button class="b b-dark" id="dl-js">site-data.js 내려받기</button></div>
+      <div class="card"><h2>방법 2. 파일 내려받아 업로드</h2><div class="desc">일반 웹호스팅(FTP) 사용 시: 파일을 내려받아 서버의 <code>data/site-data.js</code>에 덮어쓰기.</div><div class="toolbar"><button class="b b-dark" id="dl-js">국문 site-data.js 내려받기</button>${DATA.en ? '<button class="b b-dark" id="dl-js-en">영문 site-data-en.js 내려받기</button>' : ''}</div></div>
       <div class="card"><h2>백업 · 복원</h2><div class="desc">전체 콘텐츠를 JSON으로 백업하거나 복원합니다.</div><div class="toolbar"><button class="b b-line" id="bk">백업(JSON) 다운로드</button><label class="b b-line">백업 파일 복원<input type="file" id="rs" accept=".json,application/json" hidden></label><button class="b b-del" id="rv">임시저장 폐기 (게시본으로 되돌리기)</button></div></div>`;
-      $('#dl-js').onclick = () => { download(buildJS(), 'site-data.js', 'text/javascript;charset=utf-8'); toast('다운로드 완료 → 서버 data 폴더에 업로드하세요'); };
-      $('#bk').onclick = () => download(JSON.stringify(D, null, 2), `SMG_backup_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
-      $('#rs').onchange = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const o = JSON.parse(r.result); if (!o.products || !o.company) throw 0; D = o; save(); toast('복원되었습니다'); go('dash'); } catch (x) { toast('올바른 백업 파일이 아닙니다'); } }; r.readAsText(f); };
-      $('#rv').onclick = () => { if (!confirm('임시저장된 모든 편집 내용을 폐기하고 현재 게시본으로 되돌립니다. 계속할까요?')) return; ls.del(DRAFT_KEY); D = clone(PUBLISHED); save(); toast('게시본으로 되돌렸습니다'); go('publish'); };
+      $('#dl-js').onclick = () => { download(buildJS('ko'), 'site-data.js', 'text/javascript;charset=utf-8'); toast('다운로드 완료 → 서버 data 폴더에 업로드하세요'); };
+      const dle = $('#dl-js-en'); if (dle) dle.onclick = () => { download(buildJS('en'), 'site-data-en.js', 'text/javascript;charset=utf-8'); toast('다운로드 완료 → 서버 data 폴더에 업로드하세요'); };
+      $('#bk').onclick = () => download(JSON.stringify(D, null, 2), `SMG_backup_${LANG.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+      $('#rs').onchange = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const o = JSON.parse(r.result); if (!o.products || !o.company) throw 0; D = o; DATA[LANG] = o; save(); toast('복원되었습니다'); go('dash'); } catch (x) { toast('올바른 백업 파일이 아닙니다'); } }; r.readAsText(f); };
+      $('#rv').onclick = () => { if (!confirm('임시저장된 모든 편집 내용을 폐기하고 현재 게시본으로 되돌립니다. 계속할까요?')) return; ls.del(DRAFT_KEYS[LANG]); D = clone(PUBLISHED); DATA[LANG] = D; save(); toast('게시본으로 되돌렸습니다'); go('publish'); };
       $('#gh-go').onclick = async () => {
         const repo = $('#gh-repo').value.trim(), br = $('#gh-br').value.trim(), tok = $('#gh-tok').value.trim();
         if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !br || !tok) return toast('저장소, 브랜치, 토큰을 확인하세요');
         ls.set(GH_KEY, JSON.stringify({ repo, branch: br }));
         const btn = $('#gh-go'); btn.disabled = true; btn.textContent = '게시 중...';
-        const api = `https://api.github.com/repos/${repo}/contents/data/site-data.js`;
         const H = { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json' };
         try {
-          let sha0; const g = await fetch(api + '?ref=' + encodeURIComponent(br), { headers: H }); if (g.ok) sha0 = (await g.json()).sha; else if (g.status !== 404) throw new Error('조회 실패 (' + g.status + ')');
-          const content = btoa(unescape(encodeURIComponent(buildJS())));
-          const p = await fetch(api, { method: 'PUT', headers: H, body: JSON.stringify({ message: 'CMS: 홈페이지 콘텐츠 업데이트 (' + new Date().toLocaleString('ko-KR') + ')', content, branch: br, sha: sha0 }) });
-          if (!p.ok) { const j = await p.json().catch(() => ({})); throw new Error((j.message || '') + ' (' + p.status + ')'); }
+          const langs = ['ko', 'en'].filter((l) => DATA[l] && dirtyOf(l));
+          if (!langs.length) langs.push(LANG);
+          for (const l of langs) {
+            const api = `https://api.github.com/repos/${repo}/contents/${FILES[l][0]}`;
+            let sha0; const g = await fetch(api + '?ref=' + encodeURIComponent(br), { headers: H }); if (g.ok) sha0 = (await g.json()).sha; else if (g.status !== 404) throw new Error('조회 실패 (' + g.status + ')');
+            const content = btoa(unescape(encodeURIComponent(buildJS(l))));
+            const p = await fetch(api, { method: 'PUT', headers: H, body: JSON.stringify({ message: `CMS: ${FILES[l][2]} 홈페이지 콘텐츠 업데이트 (${new Date().toLocaleString('ko-KR')})`, content, branch: br, sha: sha0 }) });
+            if (!p.ok) { const j = await p.json().catch(() => ({})); throw new Error(FILES[l][2] + ' ' + (j.message || '') + ' (' + p.status + ')'); }
+            PUB[l] = clone(DATA[l]);
+          }
+          save();
           toast('게시 완료! 1~2분 후 사이트에 반영됩니다');
           btn.textContent = '게시 완료 ✓';
         } catch (err) { toast('게시 실패: ' + err.message); btn.textContent = 'GitHub에 게시'; }
@@ -402,8 +424,9 @@
   };
 
   function statusBadge(s) { return `<span class="badge ${s === '신규' ? 'red' : s === '완료' ? 'green' : 'amber'}">${esc(s)}</span>`; }
-  function buildJS() {
-    return `/* SMG 홈페이지 콘텐츠 데이터 — 관리자(admin.html)에서 생성 · ${new Date().toISOString()} */\nwindow.SMG_DEFAULT_DATA = ${JSON.stringify(D, null, 2)};\n`;
+  function buildJS(l) {
+    l = l || LANG;
+    return `/* SMG 홈페이지 콘텐츠 데이터 (${FILES[l][2]}) — 관리자(admin.html)에서 생성 · ${new Date().toISOString()} */\nwindow.${FILES[l][1]} = ${JSON.stringify(DATA[l], null, 2)};\n`;
   }
   function download(text, name, type) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);

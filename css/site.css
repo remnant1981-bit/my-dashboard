@@ -563,3 +563,22 @@ input,select,textarea{font:inherit;color:inherit}
 @media (max-width:640px){body.no-mbar{padding-bottom:0}body.no-mbar .fab{bottom:calc(14px + env(safe-area-inset-bottom))}}
 @media (max-width:640px){main > .sec[style*="padding-top"]{padding-top:16px!important}}
 @media (max-width:640px){.ftr-bot address span{display:block;white-space:normal;margin-right:0}.ftr-bot address br{display:none}.ftr-bot{flex-direction:column;gap:14px}}
+
+/* ===== v4: language switch ===== */
+.lang{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:999px;border:1px solid currentColor;border-color:rgba(127,127,127,.35);font-size:12.5px;font-weight:700;letter-spacing:.04em}
+.lang b{opacity:.45;font-weight:800}.lang b.on{opacity:1}
+.lang i{width:1px;height:12px;background:currentColor;opacity:.3}
+.lang:hover{border-color:currentColor}
+.mnav .lang{color:#fff;border-color:rgba(255,255,255,.3);border-bottom:1px solid rgba(255,255,255,.3);padding:0 10px;font-size:12.5px}
+@media (max-width:640px){.hdr .lang{height:32px;padding:0 9px}}
+html[lang=en] .hero h1{max-width:20ch}
+html[lang=en] body{word-break:normal;overflow-wrap:break-word}
+html[lang=en] .spec td,html[lang=en] .cert-tags span{overflow-wrap:anywhere}
+.gnb>li>a,.hdr-tel,.logo-txt b,.logo-txt small,.lang,.hdr .btn{white-space:nowrap}
+.logo-mark{flex:none}
+@media (max-width:1280px) and (min-width:1101px){.hdr-tel{display:none}.gnb>li>a{padding:0 14px}}
+html[lang=en] .gnb>li>a{padding:0 14px}
+html[lang=en] .news-row{grid-template-columns:110px 120px 1fr 24px}
+@media (max-width:640px){html[lang=en] .news-row{grid-template-columns:1fr}}
+.mnav a.lang{display:inline-flex;align-items:center;gap:6px;padding:0 10px;height:34px;font-size:12.5px;border:1px solid rgba(255,255,255,.3);border-radius:999px}
+@media (max-width:1100px){.ftr-bot address span{white-space:normal}}
