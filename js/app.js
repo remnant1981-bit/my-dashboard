@@ -63,7 +63,7 @@
     const m = document.createElement('div');
     m.className = 'mnav'; m.setAttribute('aria-hidden', 'true');
     m.innerHTML = `<div class="mnav-top">${logo()}<button class="mnav-close" aria-label="메뉴 닫기">×</button></div>
-      ${NAV.map((n) => `<a href="${n.href}">${n.label}</a>${n.sub.length ? `<div class="msub">${n.sub.map((s) => `<a href="${s[0]}">${esc(s[1])}</a>`).join('')}</div>` : ''}`).join('')}
+      ${NAV.map((n) => n.sub.length ? `<div class="mgrp"><div class="mrow"><a href="${n.href}">${n.label}</a><button class="mtog" aria-label="${n.label} 하위 메뉴" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button></div><div class="msub">${n.sub.map((s) => `<a href="${s[0]}">${esc(s[1])}</a>`).join('')}</div></div>` : `<a href="${n.href}">${n.label}</a>`).join('')}
       <div style="margin-top:auto;padding-top:28px"><a class="btn btn-primary" style="width:100%;justify-content:center;border:0;font-size:16px" href="${telHref(D.company.tel)}">${I.phone} ${esc(D.company.tel)}</a></div>`;
     document.body.appendChild(m);
     const hb = $('.hamb', hdr);
@@ -71,6 +71,8 @@
     hb.onclick = () => toggle(true);
     $('.mnav-close', m).onclick = () => toggle(false);
     $$('a', m).forEach((a) => a.addEventListener('click', () => toggle(false)));
+    $$('.mtog', m).forEach((t) => (t.onclick = () => { const g = t.closest('.mgrp'); const o = !g.classList.contains('open'); $$('.mgrp', m).forEach((x) => { x.classList.remove('open'); $('.mtog', x).setAttribute('aria-expanded', 'false'); }); g.classList.toggle('open', o); t.setAttribute('aria-expanded', o); }));
+    const curGrp = $$('.mgrp', m).find((g) => $('.mrow a', g).getAttribute('href') === cur); if (curGrp) curGrp.classList.add('open');
 
     if (page === 'home') {
       const onS = () => hdr.classList.toggle('solid', scrollY > 40);
@@ -90,6 +92,10 @@
     document.body.appendChild(f);
 
     const fab = document.createElement('div');
+    const mbar = document.createElement('nav');
+    mbar.className = 'mbar'; mbar.setAttribute('aria-label', '빠른 메뉴');
+    mbar.innerHTML = `<a href="${telHref(D.company.tel)}">${I.phone}전화</a><a href="${esc(D.settings.catalogPdf)}" download>${I.dl}카탈로그</a><a class="pri" href="contact.html" id="mbar-q">${I.mail}견적 문의</a>`;
+    if (page !== 'contact') document.body.appendChild(mbar); else document.body.classList.add('no-mbar');
     fab.className = 'fab';
     fab.innerHTML = `<a class="q" href="contact.html" aria-label="견적 문의">${I.mail}</a><button class="top" aria-label="맨 위로">${I.up}</button>`;
     document.body.appendChild(fab);
@@ -210,6 +216,7 @@
       $('#pl-title').textContent = cur ? cur.name : '제품소개';
       $('#pl-desc').textContent = cur ? cur.desc : '온도센서 · 써모웰 · 히터 · 압력 트랜스미터 · 케이블 부싱 · 피드스루 전 제품 라인업';
       $$('button', side).forEach((b) => (b.onclick = () => { cat = b.dataset.c; sync(); draw(); }));
+      const on = $('button.on', side); if (on && side.scrollWidth > side.clientWidth) side.scrollLeft = on.offsetLeft - 16;
     }
     function sync() { const u = new URLSearchParams(); if (cat !== 'all') u.set('cat', cat); if (q) u.set('q', q); history.replaceState(null, '', location.pathname + (u.toString() ? '?' + u : '')); }
     let tm; inp.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { q = inp.value; sync(); draw(); }, 150); };
@@ -239,6 +246,18 @@
     const main = $('#pd-main img');
     $$('.pd-thumbs button').forEach((b) => (b.onclick = () => { main.src = b.dataset.src; $$('.pd-thumbs button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); }));
     $('#pd-main').onclick = () => lightbox(main.src);
+    const mq = $('#mbar-q'); if (mq) mq.href = 'contact.html?product=' + encodeURIComponent(p.code + ' ' + p.name);
+    if (p.images.length > 1) {
+      let idx = 0; const thumbs = $$('.pd-thumbs button');
+      $('.pd-gal').insertAdjacentHTML('beforeend', `<div class="pd-dots" aria-hidden="true">${p.images.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>`);
+      const dots = $$('.pd-dots i');
+      const show = (i) => { idx = (i + p.images.length) % p.images.length; main.src = p.images[idx]; thumbs.forEach((x, k) => x.classList.toggle('on', k === idx)); dots.forEach((x, k) => x.classList.toggle('on', k === idx)); };
+      thumbs.forEach((b, k) => (b.onclick = () => show(k)));
+      let sx = 0, sy = 0, moved = false; const el = $('#pd-main');
+      el.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; moved = false; }, { passive: true });
+      el.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { moved = true; show(idx + (dx < 0 ? 1 : -1)); } }, { passive: true });
+      el.onclick = () => { if (!moved) lightbox(main.src); moved = false; };
+    }
     const cp = $('#cp'); if (cp) cp.onclick = () => { (navigator.clipboard ? navigator.clipboard.writeText(p.orderCode) : Promise.reject()).then(() => toast('Ordering Code 복사됨'), () => toast(p.orderCode)); };
     const rel = D.products.filter((x) => x.category === p.category && x.id !== p.id).slice(0, 4);
     $('#related').innerHTML = rel.length ? `<div class="sec-head"><div><span class="eyebrow">Related</span><h2 class="sec-title" style="font-size:32px">같은 카테고리 제품</h2></div></div><div class="prod-grid">${rel.map(prodCard).join('')}</div>` : '';
