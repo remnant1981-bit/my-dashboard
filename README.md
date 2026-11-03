@@ -1,24 +1,24 @@
 # SMG 주식회사 에스엠지 — 기업 홈페이지
 
-2024 Products Catalogue를 바탕으로 만든 정적 기업 홈페이지와 관리자(CMS)입니다.
+2026 Products Catalogue(44p)를 바탕으로 만든 정적 기업 홈페이지와 관리자(CMS)입니다.
 서버나 DB 없이 어떤 호스팅(GitHub Pages, Netlify, Cloudflare Pages, 일반 웹호스팅)에도 그대로 올려서 운영할 수 있습니다.
 
 ## 구성
 
 | 페이지 | 파일 | 내용 |
 |---|---|---|
-| 메인 | `index.html` | 히어로, 핵심 수치, 제품 라인업, 회사소개, 적용분야, 주요 제품, 인증, 파트너, 소식, CTA, 팝업 |
-| 회사소개 | `about.html` | CEO 인사말, 기업정보, 연혁(1990~2024), 인증현황, 오시는 길(지도) |
+| 메인 | `index.html` | 히어로, 핵심 수치, 6개 제품군, 회사소개, 6개 적용분야, 주요 제품, 인증, 파트너, 소식, CTA, 팝업 |
+| 회사소개 | `about.html` | CEO 인사말, 기업정보, 연혁(1990~2024), 글로벌 파트너(Honeywell·REXA), 인증현황, 오시는 길 |
 | 제품목록 | `products.html` | 카테고리 필터, 통합 검색(모델·인증·적용분야), URL 공유(`?cat=`, `?q=`) |
-| 제품상세 | `product.html?id=…` | 갤러리·확대, 특징, 사양표, 인증, Ordering Code 복사, 제품 견적 문의, 관련 제품 |
-| 적용분야 | `applications.html` | 산업별 솔루션, 방산부품 적용처 |
+| 제품상세 | `product.html?id=…` | 갤러리·확대, 특징, 적용분야, 설치방법, 주의사항, 사양표, 인증번호, 제품 견적 문의, 관련 제품 |
+| 적용분야 | `applications.html` | 산업별 솔루션 6개 분야 (방산 적용처는 관리자에서 등록 시 표시) |
 | 고객지원 | `support.html` | 공지사항, 자료실(카탈로그 PDF), FAQ |
 | 견적문의 | `contact.html` | 검증 포함 문의 폼, 개인정보 동의, 스팸 방지, 지도 |
 | 기타 | `privacy.html`, `404.html`, `robots.txt`, `sitemap.xml` | 개인정보처리방침, 오류 페이지, SEO |
 | **관리자** | `admin.html` | 콘텐츠 관리(CMS) |
 
 - 모든 콘텐츠는 `data/site-data.js` 한 파일에 들어 있습니다.
-- 제품 이미지는 `assets/img/*.webp`(카탈로그에서 추출), 카탈로그 원본은 `assets/SMG_Products_Catalogue.pdf`입니다.
+- 제품 이미지는 `assets/img/*.webp`(카탈로그에서 추출), 카탈로그 원본은 `assets/SMG_Products_Catalogue_2026.pdf`입니다.
 - 이전 연구소 대시보드는 `dashboard/`로 옮겨 그대로 두었습니다.
 
 ## 관리자 사용법 (`/admin.html`)

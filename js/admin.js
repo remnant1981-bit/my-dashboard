@@ -10,6 +10,8 @@
   const PUBLISHED = window.SMG_DEFAULT_DATA;
   let D;
   try { D = JSON.parse(ls.get(DRAFT_KEY)) || clone(PUBLISHED); } catch (e) { D = clone(PUBLISHED); }
+  // 게시본 데이터 구조가 새 버전이면(카탈로그 개편 등) 이전 임시저장본은 폐기
+  if ((D.version || 1) < (PUBLISHED.version || 1)) { D = clone(PUBLISHED); try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} }
   // schema migration: ensure all keys exist
   Object.keys(PUBLISHED).forEach((k) => { if (D[k] === undefined) D[k] = clone(PUBLISHED[k]); });
   Object.keys(PUBLISHED.settings).forEach((k) => { if (D.settings[k] === undefined) D.settings[k] = PUBLISHED.settings[k]; });
@@ -43,7 +45,7 @@
   const MENU = [
     ['grp', '개요'], ['dash', '대시보드'], ['inq', '문의 관리'],
     ['grp', '콘텐츠'], ['products', '제품 관리'], ['categories', '제품 카테고리'], ['news', '공지사항'], ['downloads', '자료실'], ['faq', 'FAQ'],
-    ['grp', '사이트 정보'], ['home', '메인 화면'], ['company', '회사 정보'], ['about', '회사소개 · 인증'], ['history', '연혁'], ['apps', '적용분야 · 방산'],
+    ['grp', '사이트 정보'], ['home', '메인 화면'], ['company', '회사 정보'], ['about', '회사소개 · 인증'], ['history', '연혁'], ['apps', '적용분야 · 파트너'],
     ['grp', '시스템'], ['settings', '설정'], ['publish', '게시 · 백업']
   ];
   let cur = 'dash';
@@ -256,11 +258,13 @@
           { k: 'images', label: '제품 이미지', type: 'images', full: true },
           { k: 'features', label: '주요 특징', type: 'list', full: true },
           { k: 'applications', label: '적용 분야', type: 'textarea', full: true, rows: 2 },
+          { k: 'installation', label: '설치 방법', type: 'textarea', full: true, rows: 3 },
+          { k: 'notice', label: '주의사항 (선택)', type: 'textarea', full: true, rows: 2, hint: '입력 시 상세 페이지에 주황색 박스로 표시' },
           { k: 'specs', label: '사양 (항목 / 값)', type: 'pairs', full: true },
           { k: 'certs', label: '인증', type: 'list', full: true },
           { k: 'featured', label: '메인 화면 "주요 제품"에 노출', type: 'check', full: true }
         ],
-        blank: () => ({ id: '', category: D.categories[0] ? D.categories[0].id : '', code: '', name: '', nameKo: '', summary: '', images: [], features: [], applications: '', certs: [], specs: [], orderCode: '', featured: false }),
+        blank: () => ({ id: '', category: D.categories[0] ? D.categories[0].id : '', code: '', name: '', nameKo: '', summary: '', images: [], features: [], applications: '', installation: '', notice: '', certs: [], specs: [], orderCode: '', featured: false }),
         validate: (o, i) => {
           if (!o.code) return '모델명을 입력하세요';
           o.id = slug(o.id || o.code) || ('p' + Date.now());
@@ -273,9 +277,9 @@
     categories(el) {
       collection(el, {
         title: '제품 카테고리', desc: '제품 분류. ID 변경 시 해당 제품들의 카테고리도 함께 변경됩니다.', item: '카테고리', get: () => D.categories,
-        cols: [['image', '이미지', (o) => thumb(o.image)], ['name', '이름', (o) => `<b>${esc(o.name)}</b><br><span style="color:var(--muted)">${esc(o.nameEn)}</span>`], ['id', 'ID'], ['cnt', '제품 수', (o) => D.products.filter((p) => p.category === o.id).length]],
-        fields: [{ k: 'name', label: '이름 (국문)' }, { k: 'nameEn', label: '이름 (영문)' }, { k: 'id', label: 'ID (영문)', hint: '예: temperature' }, { k: 'desc', label: '설명', type: 'textarea', full: true, rows: 2 }, { k: 'image', label: '대표 이미지', type: 'image', full: true }],
-        blank: () => ({ id: '', name: '', nameEn: '', desc: '', image: '' }),
+        cols: [['image', '이미지', (o) => thumb(o.image)], ['name', '이름', (o) => `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(o.color || '#ccc')};margin-right:6px"></span><b>${esc(o.name)}</b><br><span style="color:var(--muted)">${esc(o.nameEn)}</span>`], ['id', 'ID'], ['cnt', '제품 수', (o) => D.products.filter((p) => p.category === o.id).length]],
+        fields: [{ k: 'name', label: '이름 (국문)' }, { k: 'nameEn', label: '이름 (영문)' }, { k: 'id', label: 'ID (영문)', hint: '예: temperature' }, { k: 'color', label: '대표 색상', type: 'color', hint: '카드 상단 라인·라벨 색상' }, { k: 'desc', label: '설명', type: 'textarea', full: true, rows: 2 }, { k: 'image', label: '대표 이미지', type: 'image', full: true }],
+        blank: () => ({ id: '', name: '', nameEn: '', desc: '', image: '', color: '#e1251b' }),
         validate: (o, i) => { if (!o.name) return '이름을 입력하세요'; o.id = slug(o.id || o.nameEn) || ('c' + Date.now()); if (D.categories.some((c, j) => c.id === o.id && j !== i)) return '중복 ID'; if (i >= 0 && D.categories[i].id !== o.id) D.products.forEach((p) => { if (p.category === D.categories[i].id) p.category = o.id; }); }
       });
     },
@@ -311,9 +315,11 @@
     },
 
     apps(el) {
-      const a = document.createElement('div'), b = document.createElement('div'), c = document.createElement('div'); el.append(a, b, c);
+      const a = document.createElement('div'), b = document.createElement('div'), c = document.createElement('div'), p = document.createElement('div'); el.append(a, p, b, c);
+      if (!D.partnerCards) D.partnerCards = [];
+      collection(p, { title: '글로벌 파트너 카드 (회사소개)', item: '파트너', get: () => D.partnerCards, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '제목'], ['desc', '설명']], fields: [{ k: 'title', label: '제목', full: true }, { k: 'desc', label: '설명', type: 'textarea', full: true, rows: 2 }, { k: 'image', label: '이미지 (인증서 등)', type: 'image', full: true }], blank: () => ({ title: '', desc: '', image: '' }) });
       collection(a, { title: '산업별 적용분야', item: '적용분야', get: () => D.industries, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '제목'], ['desc', '설명']], fields: [{ k: 'title', label: '제목' }, { k: 'desc', label: '설명' }, { k: 'image', label: '이미지', type: 'image', full: true }], blank: () => ({ title: '', desc: '', image: '' }) });
-      collection(b, { title: '방산부품 적용처', item: '방산 적용처', get: () => D.defense, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '적용처']], fields: [{ k: 'title', label: '적용처', full: true }, { k: 'image', label: '이미지', type: 'image', full: true }], blank: () => ({ title: '', image: '' }) });
+      collection(b, { title: '방산부품 적용처', desc: '비워두면 적용분야 페이지에서 방산 섹션이 자동으로 숨겨집니다.', item: '방산 적용처', get: () => D.defense, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '적용처']], fields: [{ k: 'title', label: '적용처', full: true }, { k: 'image', label: '이미지', type: 'image', full: true }], blank: () => ({ title: '', image: '' }) });
       formCard(c, '파트너 (메인 하단 롤링)', '한 줄에 하나씩', [{ k: 'partners', label: '파트너명', type: 'list', full: true }], D);
     },
 

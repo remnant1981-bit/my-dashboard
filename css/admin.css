@@ -119,3 +119,4 @@ table.tbl{width:100%;border-collapse:collapse;background:#fff;font-size:14px}
   .kpis{grid-template-columns:1fr 1fr}
   .quick,.fg{grid-template-columns:1fr}
 }
+.f input[type=color]{padding:4px;height:40px;cursor:pointer}

@@ -107,7 +107,10 @@ input,select,textarea{font:inherit;color:inherit}
 /* Category cards */
 .cat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:20px}
 .cat-card{grid-column:span 2;position:relative;border-radius:var(--radius);overflow:hidden;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column;transition:.3s;min-height:420px}
-.cat-card:nth-child(4),.cat-card:nth-child(5){grid-column:span 3}
+.cat-card{--cc:var(--red)}
+.cat-card::before{content:"";position:absolute;left:0;top:0;right:0;height:4px;background:var(--cc);z-index:2}
+.cat-card .no{color:var(--cc)!important}
+.cat-card:hover .arrow{background:var(--cc)!important;border-color:var(--cc)!important}
 .cat-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-l);border-color:transparent}
 .cat-card .img{flex:1;display:flex;align-items:center;justify-content:center;padding:32px;background:radial-gradient(circle at 50% 60%,#fff 0%,var(--bg-3) 100%);min-height:240px}
 .cat-card .img img{max-height:210px;object-fit:contain;transition:.5s}
@@ -350,8 +353,7 @@ input,select,textarea{font:inherit;color:inherit}
   .hamb{display:flex}
   .hdr-util{margin-left:auto}
   .cat-grid{grid-template-columns:repeat(2,1fr)}
-  .cat-card,.cat-card:nth-child(4),.cat-card:nth-child(5){grid-column:span 1}
-  .cat-card:nth-child(5){grid-column:1/-1}
+  .cat-card{grid-column:span 1}
   .prod-grid{grid-template-columns:repeat(2,1fr)}
   .ind-grid{grid-template-columns:repeat(3,1fr)}
   .split,.pd,.contact-wrap{grid-template-columns:1fr;gap:40px}
@@ -373,7 +375,6 @@ input,select,textarea{font:inherit;color:inherit}
   .hero-stats div{padding:18px 12px 0 0}
   .scroll-ind{display:none}
   .cat-grid,.prod-grid,.pl-grid{grid-template-columns:1fr}
-  .cat-card:nth-child(5){grid-column:auto}
   .ind-grid{grid-template-columns:1fr 1fr}
   .values,.form-grid{grid-template-columns:1fr}
   .news-row{grid-template-columns:1fr;gap:4px}
@@ -394,3 +395,16 @@ input,select,textarea{font:inherit;color:inherit}
   .hero h1{max-width:none}
 }
 @media print{.hdr,.ftr,.fab,.tabs,.pd-actions{display:none}.sub-hero{padding:20px 0;background:none;color:#000}}
+
+/* v2: partner cards, notice, 6 industries */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.pcard{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.pcard .pimg{aspect-ratio:16/8;background:var(--bg-2);overflow:hidden}
+.pcard .pimg img{width:100%;height:100%;object-fit:cover;object-position:top}
+.pcard .pbody{padding:22px 24px}
+.pcard b{display:block;font-size:19px;font-weight:800}
+.pcard span{color:var(--muted);font-size:14.5px}
+.notice{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:14px 16px;border-radius:10px;font-size:14.5px}
+.ind-grid.six{grid-template-columns:repeat(6,1fr)}
+@media (max-width:1100px){.pgrid{grid-template-columns:1fr}.ind-grid.six{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:640px){.ind-grid.six{grid-template-columns:1fr 1fr}}

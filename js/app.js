@@ -13,7 +13,7 @@
   let D = window.SMG_DEFAULT_DATA;
   if (preview) {
     const d = safeGet(DRAFT_KEY);
-    if (d) { try { D = JSON.parse(d); } catch (e) {} }
+    if (d) { try { const x = JSON.parse(d); if ((x.version || 1) >= (D.version || 1)) D = x; } catch (e) {} }
   }
   window.SMG = { data: D, DRAFT_KEY, INQ_KEY, safeGet, safeSet };
 
@@ -34,9 +34,9 @@
   window.SMG.I = I; window.SMG.esc = esc;
 
   const NAV = [
-    { href: 'about.html', label: '회사소개', sub: [['about.html#overview', '기업개요'], ['about.html#history', '연혁'], ['about.html#cert', '인증현황'], ['about.html#location', '오시는 길']] },
+    { href: 'about.html', label: '회사소개', sub: [['about.html#overview', '기업개요'], ['about.html#history', '연혁'], ['about.html#partners', '글로벌 파트너'], ['about.html#cert', '인증현황'], ['about.html#location', '오시는 길']] },
     { href: 'products.html', label: '제품소개', sub: D.categories.map((c) => ['products.html?cat=' + c.id, c.name]) },
-    { href: 'applications.html', label: '적용분야', sub: [['applications.html#industries', '산업별 솔루션'], ['applications.html#defense', '방산 부품']] },
+    { href: 'applications.html', label: '적용분야', sub: [['applications.html#industries', '산업별 솔루션']] },
     { href: 'support.html', label: '고객지원', sub: [['support.html#news', '공지사항'], ['support.html#downloads', '자료실'], ['support.html#faq', 'FAQ']] },
     { href: 'contact.html', label: '견적문의', sub: [] }
   ];
@@ -111,7 +111,7 @@
     const cat = D.categories.find((c) => c.id === p.category);
     return `<a class="prod-card" href="product.html?id=${encodeURIComponent(p.id)}">${p.certs && p.certs.length ? '<span class="chip">방폭/선급 인증</span>' : ''}
       <div class="img"><img src="${esc(p.images[0])}" alt="${esc(p.code + ' ' + p.name)}" loading="lazy"></div>
-      <div class="body"><span class="tag">${esc(cat ? cat.nameEn : '')}</span><h3>${esc(p.code)}</h3><div class="en">${esc(p.nameKo)} · ${esc(p.name)}</div><p>${esc(p.summary)}</p><span class="more">자세히 보기 ${I.arrow}</span></div></a>`;
+      <div class="body"><span class="tag" style="color:${esc(cat && cat.color || '')}">${esc(cat ? cat.nameEn : '')}</span><h3>${esc(p.code)}</h3><div class="en">${esc(p.nameKo)} · ${esc(p.name)}</div><p>${esc(p.summary)}</p><span class="more">자세히 보기 ${I.arrow}</span></div></a>`;
   }
   window.SMG.prodCard = prodCard;
 
@@ -170,7 +170,7 @@
       <div class="hero-cta"><a class="btn btn-primary" href="products.html">${esc(h.ctaPrimary)} ${I.arrow}</a><a class="btn btn-ghost" href="contact.html">${esc(h.ctaSecondary)}</a><a class="btn btn-ghost" href="${esc(D.settings.catalogPdf)}" download>${I.dl} 카탈로그 PDF</a></div>
       <div class="hero-stats">${D.stats.map((s) => `<div><b data-count="${esc(s.value)}">${esc(s.value)}<em>${esc(s.suffix)}</em></b><span>${esc(s.label)}</span></div>`).join('')}</div></div>
       <div class="scroll-ind">SCROLL</div>`;
-    $('#cats').innerHTML = D.categories.map((c, i) => `<a class="cat-card rv" href="products.html?cat=${c.id}" style="transition-delay:${i * 60}ms"><span class="arrow">${I.arrowUR}</span><div class="img"><img src="${esc(c.image)}" alt="${esc(c.name)}" loading="lazy"></div><div class="body"><span class="no">0${i + 1} — ${D.products.filter((p) => p.category === c.id).length} Products</span><h3><small>${esc(c.nameEn)}</small>${esc(c.name)}</h3><p>${esc(c.desc)}</p></div></a>`).join('');
+    $('#cats').innerHTML = D.categories.map((c, i) => `<a class="cat-card rv" href="products.html?cat=${c.id}" style="transition-delay:${i * 60}ms;--cc:${esc(c.color || '#e1251b')}"><span class="arrow">${I.arrowUR}</span><div class="img"><img src="${esc(c.image)}" alt="${esc(c.name)}" loading="lazy"></div><div class="body"><span class="no">0${i + 1} — 제품 ${D.products.filter((p) => p.category === c.id).length}종</span><h3><small>${esc(c.nameEn)}</small>${esc(c.name)}</h3><p>${esc(c.desc)}</p></div></a>`).join('');
     const a = D.about;
     $('#about').innerHTML = `<div class="media rv"><img src="${esc(a.image)}" alt="에스엠지 사옥" loading="lazy"><div class="badge"><b>${new Date().getFullYear() - D.company.founded}+</b><span>Years of Manufacturing</span></div></div>
       <div class="prose rv"><span class="eyebrow">About SMG</span><h2 class="sec-title">${esc(a.title)}</h2>${a.body.slice(0, 2).map((p) => `<p>${esc(p)}</p>`).join('')}
@@ -203,12 +203,12 @@
     function draw() {
       side.innerHTML = '<h4>CATEGORY</h4>' + cats.map((c) => `<button data-c="${c.id}" class="${cat === c.id ? 'on' : ''}">${esc(c.name)} <span>${c.id === 'all' ? D.products.length : D.products.filter((p) => p.category === c.id).length}</span></button>`).join('');
       const k = q.trim().toLowerCase();
-      const list = D.products.filter((p) => (cat === 'all' || p.category === cat) && (!k || [p.code, p.name, p.nameKo, p.summary, p.applications, (p.features || []).join(' '), (p.certs || []).join(' ')].join(' ').toLowerCase().includes(k)));
+      const list = D.products.filter((p) => (cat === 'all' || p.category === cat) && (!k || [p.code, p.name, p.nameKo, p.summary, p.applications, p.installation, (p.features || []).join(' '), (p.certs || []).join(' ')].join(' ').toLowerCase().includes(k)));
       cnt.innerHTML = `총 <em>${list.length}</em>개 제품`;
       grid.innerHTML = list.length ? list.map(prodCard).join('') : `<div class="empty" style="grid-column:1/-1">검색 결과가 없습니다.<br><a href="contact.html" style="color:var(--red);font-weight:700">찾는 제품을 문의해 주세요 →</a></div>`;
       const cur = D.categories.find((c) => c.id === cat);
       $('#pl-title').textContent = cur ? cur.name : '제품소개';
-      $('#pl-desc').textContent = cur ? cur.desc : '온도센서 · 히터 · 메탈척 · 피드스루 · 압력센서 전 제품 라인업';
+      $('#pl-desc').textContent = cur ? cur.desc : '온도센서 · 써모웰 · 히터 · 압력 트랜스미터 · 케이블 부싱 · 피드스루 전 제품 라인업';
       $$('button', side).forEach((b) => (b.onclick = () => { cat = b.dataset.c; sync(); draw(); }));
     }
     function sync() { const u = new URLSearchParams(); if (cat !== 'all') u.set('cat', cat); if (q) u.set('q', q); history.replaceState(null, '', location.pathname + (u.toString() ? '?' + u : '')); }
@@ -226,10 +226,12 @@
     $('#pd-title').textContent = p.nameKo;
     $('#pd').innerHTML = `<div class="pd-gal"><div class="pd-main" id="pd-main" title="클릭하여 확대"><img src="${esc(p.images[0])}" alt="${esc(p.code)}"></div>
       ${p.images.length > 1 ? `<div class="pd-thumbs">${p.images.map((im, i) => `<button class="${i ? '' : 'on'}" data-src="${esc(im)}" aria-label="이미지 ${i + 1}"><img src="${esc(im)}" alt=""></button>`).join('')}</div>` : ''}</div>
-      <div class="pd-info"><span class="chip">${esc(cat.name || '')}</span><div class="code" style="margin-top:14px">${esc(p.code)}</div><div class="nm">${esc(p.nameKo)}</div><div class="en">${esc(p.name)}</div>
+      <div class="pd-info"><span class="chip" style="background:color-mix(in srgb,${esc(cat.color || '#e1251b')} 12%,#fff);color:${esc(cat.color || '#e1251b')}">${esc(cat.name || '')}</span><div class="code" style="margin-top:14px">${esc(p.code)}</div><div class="nm">${esc(p.nameKo)}</div><div class="en">${esc(p.name)}</div>
       <p class="sum">${esc(p.summary)}</p>
       ${p.features && p.features.length ? `<div class="pd-block"><h3>Features</h3><ul class="checks">${p.features.map((f) => `<li>${esc(f)}</li>`).join('')}</ul></div>` : ''}
       ${p.applications ? `<div class="pd-block"><h3>Application</h3><p>${esc(p.applications)}</p></div>` : ''}
+      ${p.installation ? `<div class="pd-block"><h3>Installation</h3><p>${esc(p.installation)}</p></div>` : ''}
+      ${p.notice ? `<div class="pd-block"><h3>Notice</h3><p class="notice">${esc(p.notice)}</p></div>` : ''}
       ${p.specs && p.specs.length ? `<div class="pd-block"><h3>Specification</h3><table class="spec">${p.specs.map((s) => `<tr><th>${esc(s[0])}</th><td>${esc(s[1])}</td></tr>`).join('')}</table></div>` : ''}
       ${p.certs && p.certs.length ? `<div class="pd-block"><h3>Certification</h3><div class="cert-tags">${p.certs.map((c) => `<span>${esc(c)}</span>`).join('')}</div></div>` : ''}
       ${p.orderCode ? `<div class="pd-block"><h3>Sample Ordering Code</h3><div class="code-box"><span>${esc(p.orderCode)}</span><button id="cp">복사</button></div><p style="font-size:13.5px;color:var(--muted);margin-top:8px">세부 Ordering Code 표는 카탈로그 PDF를 참고하세요. 현장 공정에 맞춘 주문 제작이 가능합니다.</p></div>` : ''}
@@ -252,9 +254,10 @@
       <div class="prose rv"><span class="eyebrow">CEO Message</span><h2 class="sec-title">${esc(a.title)}</h2>${a.body.map((p) => `<p>${esc(p)}</p>`).join('')}<p style="color:var(--text);font-weight:700;margin-top:24px">앞으로도 에스엠지에 변함없는 애정과 성원을 부탁드립니다.</p></div></div>
       <div class="values v4">${a.values.map((v) => `<div class="rv"><b>${esc(v.title)}</b><span>${esc(v.desc)}</span></div>`).join('')}</div>`;
     const c = D.company;
-    $('#info').innerHTML = `<table class="spec"><tr><th>회사명</th><td>${esc(c.name)} (${esc(c.nameEn)})</td></tr><tr><th>설립</th><td>${c.founded}년 (성실전자)</td></tr>${c.ceo ? `<tr><th>대표이사</th><td>${esc(c.ceo)}</td></tr>` : ''}<tr><th>주요제품</th><td>온도센서(RTD/TC), 히터, 메탈척, 케이블부싱·피드스루, 압력센서</td></tr><tr><th>인증</th><td>ISO 9001, ISO 14001, ATEX, IECEx, KGS, KTL, BV, UL</td></tr><tr><th>본사</th><td>${esc(c.address)}</td></tr><tr><th>연락처</th><td>TEL ${esc(c.tel)} · FAX ${esc(c.fax)} · ${esc(c.email)}</td></tr></table>`;
+    $('#info').innerHTML = `<table class="spec"><tr><th>회사명</th><td>${esc(c.name)} (${esc(c.nameEn)})</td></tr><tr><th>설립</th><td>${c.founded}년 (성실전자)</td></tr>${c.ceo ? `<tr><th>대표이사</th><td>${esc(c.ceo)}</td></tr>` : ''}<tr><th>주요제품</th><td>온도센서(RTD/TC·멀티 써모커플), 써모웰, 히터(마이카·필름·메탈 척/플레이트), 압력 트랜스미터, 케이블 부싱, 피드스루(ShieldLoc)</td></tr><tr><th>인증</th><td>ISO 9001, ISO 14001, ATEX, IECEx, KCs·KGS, KTL, BV, UL, ASME PTC 19.3</td></tr><tr><th>본사</th><td>${esc(c.address)}</td></tr><tr><th>연락처</th><td>TEL ${esc(c.tel)} · FAX ${esc(c.fax)} · ${esc(c.email)}</td></tr></table>`;
     let lastDec = '';
     $('#history-list').innerHTML = D.history.map((h) => { const dec = String(h.year).slice(0, 3) + "0's"; const d = dec !== lastDec ? `<div class="decade">${dec}</div>` : ''; lastDec = dec; return d + `<div class="hv rv"><b>${esc(h.year)}</b><ul>${h.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`; }).join('');
+    const pc = $('#partner-list'); if (pc) pc.innerHTML = (D.partnerCards || []).map((x) => `<div class="pcard rv"><div class="pimg"><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></div><div class="pbody"><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></div></div>`).join('');
     $('#cert-list').innerHTML = D.certifications.map((c) => `<div><b>${esc(c.name)}</b><span>${esc(c.desc)}</span></div>`).join('');
     renderMap($('#map'));
     $('#loc-info').innerHTML = `<b style="font-size:18px">${esc(c.address)}</b><p style="color:var(--muted)">${esc(c.addressEn)}</p><p style="margin-top:8px">TEL <a href="${telHref(c.tel)}">${esc(c.tel)}</a> · FAX ${esc(c.fax)} · <a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>`;
@@ -268,6 +271,7 @@
 
   P.applications = function () {
     $('#ind-list').innerHTML = D.industries.map((x) => `<div class="ind rv"><img src="${esc(x.image)}" alt="" loading="lazy"><div><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></div></div>`).join('');
+    const dsec = $('#defense'); if (dsec && !(D.defense || []).length) { dsec.remove(); return; }
     $('#def-list').innerHTML = D.defense.map((x) => `<div class="ind rv" style="aspect-ratio:16/11"><img src="${esc(x.image)}" alt="" loading="lazy"><div><span style="color:#ff8a82;font-weight:700;font-size:12px;letter-spacing:.1em">적용처</span><b>${esc(x.title)}</b></div></div>`).join('');
   };
 
