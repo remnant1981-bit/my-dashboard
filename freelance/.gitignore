@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+# 산출물은 무시하되 납품 샘플 결과는 sample_output/ 에 보관
+*.xlsx
+*.csv
+!sample_output/*.xlsx
+!sample_output/*.csv
