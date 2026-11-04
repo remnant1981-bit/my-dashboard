@@ -98,6 +98,8 @@
       case 'images': return `<div class="${cls}">${lab}<div class="imgs" data-imgs="${f.k}">${imgsInner(val || [], true)}</div><small>첫 번째 이미지가 대표 이미지입니다. 업로드 시 자동으로 최대 1400px WebP로 압축됩니다. 이미지를 클릭하면 대표로 지정됩니다.</small></div>`;
       case 'image': return `<div class="${cls}">${lab}<div class="imgs" data-img="${f.k}">${imgsInner(val ? [val] : [], false)}</div><input data-k="${f.k}" value="${esc(val && val.startsWith('data:') ? '(업로드 이미지)' : val)}" placeholder="assets/img/파일명.webp" ${val && val.startsWith('data:') ? 'readonly' : ''}>${hint}</div>`;
       case 'file': return `<div class="${cls}">${lab}<div style="display:flex;gap:8px"><input data-k="${f.k}" value="${esc(val)}" placeholder="assets/파일명.pdf 또는 https://..." style="flex:1"><label class="b b-line">파일 선택<input type="file" data-file="${f.k}" hidden></label></div><small>권장: 파일을 저장소 assets 폴더에 올리고 경로를 입력. 2MB 이하 파일은 직접 첨부 가능.</small></div>`;
+      case 'hidden': return '<div></div>';
+      case 'optnum': return `<label class="${cls}">${lab}<input type="number" step="any" data-k="${f.k}" value="${val === undefined || val === null ? '' : esc(val)}">${hint}</label>`;
       default: return `<label class="${cls}">${lab}<input type="${f.type || 'text'}" data-k="${f.k}" value="${esc(val)}" ${f.ph ? `placeholder="${esc(f.ph)}"` : ''}>${hint}</label>`;
     }
   }
@@ -158,6 +160,7 @@
       else if (f.type === 'image') { const im = $(`[data-img="${f.k}"] .im`, root); target[f.k] = im ? im.dataset.src : ($(`input[data-k="${f.k}"]`, root).value.trim()); }
       else if (f.type === 'check') target[f.k] = $(`[data-k="${f.k}"]`, root).checked;
       else if (f.type === 'number') target[f.k] = Number($(`[data-k="${f.k}"]`, root).value) || 0;
+      else if (f.type === 'optnum') { const v = $(`[data-k="${f.k}"]`, root).value.trim(); if (v === '' || isNaN(Number(v))) delete target[f.k]; else target[f.k] = Number(v); }
       else { const el = $(`[data-k="${f.k}"]`, root); if (el) target[f.k] = el.value.trim(); }
     });
     return target;
@@ -248,11 +251,11 @@
       tb.onchange = (e) => { if (e.target.dataset.st) { all[+e.target.dataset.st].status = e.target.value; persist(); toast('상태 변경됨'); } };
       tb.onclick = (e) => { const b = e.target.closest('button'); if (!b) return;
         if (b.dataset.rm) { if (confirm('삭제하시겠습니까?')) { all.splice(+b.dataset.rm, 1); persist(); draw(); } }
-        if (b.dataset.v) { const q = all[+b.dataset.v]; const bg = document.createElement('div'); bg.className = 'drawer-bg'; bg.innerHTML = `<div class="drawer"><header><h3>${esc(q.type)} · ${esc(q.company)}</h3><button class="b b-ghost" data-x>✕</button></header><div class="body"><table class="tbl">${[['접수일시', q.createdAt.replace('T', ' ').slice(0, 19)], ['관심제품', q.product || '-'], ['회사명', q.company], ['담당자', q.name], ['연락처', q.phone], ['이메일', q.email], ['수량/납기', q.qty || '-']].map((r) => `<tr><th>${r[0]}</th><td>${esc(r[1])}</td></tr>`).join('')}</table><h4 style="margin-top:20px">문의 내용</h4><div class="inq-detail">${esc(q.message)}</div></div><footer><a class="b b-pri" href="mailto:${esc(q.email)}?subject=${encodeURIComponent('[SMG] 문의 회신: ' + q.type)}">메일 회신</a><a class="b b-line" href="tel:${esc(q.phone)}">전화</a></footer></div>`; document.body.appendChild(bg); $('[data-x]', bg).onclick = () => bg.remove(); bg.onmousedown = (ev) => { if (ev.target === bg) bg.remove(); }; if (q.status === '신규') { q.status = '처리중'; persist(); draw(); } }
+        if (b.dataset.v) { const q = all[+b.dataset.v]; const bg = document.createElement('div'); bg.className = 'drawer-bg'; bg.innerHTML = `<div class="drawer"><header><h3>${esc(q.type)} · ${esc(q.company)}</h3><button class="b b-ghost" data-x>✕</button></header><div class="body"><table class="tbl">${[['접수일시', q.createdAt.replace('T', ' ').slice(0, 19)], ['관심제품', q.product || '-'], ['회사명', q.company], ['담당자', q.name], ['연락처', q.phone], ['이메일', q.email], ['수량/납기', q.qty || '-'], ['견적 품목', q.items || '-'], ['언어', q.lang || 'KO']].map((r) => `<tr><th>${r[0]}</th><td>${esc(r[1])}</td></tr>`).join('')}</table><h4 style="margin-top:20px">문의 내용</h4><div class="inq-detail">${esc(q.message)}</div></div><footer><a class="b b-pri" href="mailto:${esc(q.email)}?subject=${encodeURIComponent('[SMG] 문의 회신: ' + q.type)}">메일 회신</a><a class="b b-line" href="tel:${esc(q.phone)}">전화</a></footer></div>`; document.body.appendChild(bg); $('[data-x]', bg).onclick = () => bg.remove(); bg.onmousedown = (ev) => { if (ev.target === bg) bg.remove(); }; if (q.status === '신규') { q.status = '처리중'; persist(); draw(); } }
       };
       $('[data-csv]', el).onclick = () => {
-        const cols = ['createdAt', 'status', 'type', 'product', 'company', 'name', 'phone', 'email', 'qty', 'message'];
-        const head = ['접수일시', '상태', '유형', '관심제품', '회사명', '담당자', '연락처', '이메일', '수량/납기', '내용'];
+        const cols = ['createdAt', 'status', 'lang', 'type', 'product', 'items', 'company', 'name', 'phone', 'email', 'qty', 'message'];
+        const head = ['접수일시', '상태', '언어', '유형', '관심제품', '견적품목', '회사명', '담당자', '연락처', '이메일', '수량/납기', '내용'];
         const csv = [head, ...all.map((q) => cols.map((c) => q[c] || ''))].map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
         download('﻿' + csv, `SMG_문의목록_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8');
       };
@@ -268,6 +271,8 @@
           { k: 'code', label: '모델명 (예: FX, TX)' }, { k: 'category', label: '카테고리', type: 'select', opts: catOpts },
           { k: 'nameKo', label: '제품명 (국문)' }, { k: 'name', label: '제품명 (영문)' },
           { k: 'id', label: '고유 ID (URL용, 영문/숫자/-)', hint: '비워두면 모델명으로 자동 생성' }, { k: 'orderCode', label: 'Sample Ordering Code' },
+          { k: 'catalogPage', label: '카탈로그 쪽번호', type: 'optnum', hint: '상세 페이지 [카탈로그 p.N] 버튼이 PDF 해당 쪽을 엽니다' }, { k: 'featuredSpacer', label: '', type: 'hidden' },
+          { k: 'tmin', label: '최저 사용온도 (℃)', type: 'optnum', hint: '온도 범위 비교·온도로 찾기에 사용 (비우면 제외)' }, { k: 'tmax', label: '최고 사용온도 (℃)', type: 'optnum' },
           { k: 'summary', label: '한 줄 요약', type: 'textarea', full: true, rows: 2 },
           { k: 'images', label: '제품 이미지', type: 'images', full: true },
           { k: 'features', label: '주요 특징', type: 'list', full: true },
@@ -332,7 +337,7 @@
       const a = document.createElement('div'), b = document.createElement('div'), c = document.createElement('div'), p = document.createElement('div'); el.append(a, p, b, c);
       if (!D.partnerCards) D.partnerCards = [];
       collection(p, { title: '글로벌 파트너 카드 (회사소개)', item: '파트너', get: () => D.partnerCards, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '제목'], ['desc', '설명']], fields: [{ k: 'title', label: '제목', full: true }, { k: 'desc', label: '설명', type: 'textarea', full: true, rows: 2 }, { k: 'image', label: '이미지 (인증서 등)', type: 'image', full: true }], blank: () => ({ title: '', desc: '', image: '' }) });
-      collection(a, { title: '산업별 적용분야', item: '적용분야', get: () => D.industries, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '제목'], ['desc', '설명']], fields: [{ k: 'title', label: '제목' }, { k: 'desc', label: '설명' }, { k: 'image', label: '이미지', type: 'image', full: true }], blank: () => ({ title: '', desc: '', image: '' }) });
+      collection(a, { title: '산업별 적용분야', item: '적용분야', get: () => D.industries, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '제목'], ['desc', '설명']], fields: [{ k: 'title', label: '제목' }, { k: 'desc', label: '설명' }, { k: 'image', label: '이미지', type: 'image', full: true }, { k: 'products', label: '추천 제품 ID', type: 'list', full: true, hint: '적용분야 페이지에 칩으로 표시. 제품 관리의 고유 ID 입력 (예: fx-tx, gb)' }], blank: () => ({ title: '', desc: '', image: '' }) });
       collection(b, { title: '방산부품 적용처', desc: '비워두면 적용분야 페이지에서 방산 섹션이 자동으로 숨겨집니다.', item: '방산 적용처', get: () => D.defense, cols: [['image', '이미지', (o) => thumb(o.image)], ['title', '적용처']], fields: [{ k: 'title', label: '적용처', full: true }, { k: 'image', label: '이미지', type: 'image', full: true }], blank: () => ({ title: '', image: '' }) });
       formCard(c, '파트너 (메인 하단 롤링)', '한 줄에 하나씩', [{ k: 'partners', label: '파트너명', type: 'list', full: true }], D);
     },
@@ -341,7 +346,8 @@
       formCard(el, '메인 비주얼', '홈페이지 첫 화면 대표 문구와 배경 이미지', [
         { k: 'eyebrow', label: '상단 소제목', full: true }, { k: 'title', label: '메인 타이틀', type: 'textarea', full: true, rows: 2, hint: '줄바꿈이 그대로 반영됩니다' },
         { k: 'subtitle', label: '서브 문구', type: 'textarea', full: true, rows: 2 }, { k: 'ctaPrimary', label: '버튼1 문구' }, { k: 'ctaSecondary', label: '버튼2 문구' },
-        { k: 'image', label: '배경 이미지 (가로형 권장)', type: 'image', full: true }], D.hero);
+        { k: 'image', label: '대표 배경 이미지 (슬라이드 미사용 시)', type: 'image', full: true },
+        { k: 'images', label: '메인 슬라이드 이미지 (6초 간격 자동 전환, 첫 장이 먼저 표시)', type: 'images', full: true }], D.hero);
       const c = document.createElement('div'); c.className = 'card'; el.appendChild(c);
       const drawStats = () => {
         c.innerHTML = `<h2>핵심 수치</h2><div class="desc">메인 비주얼 하단 숫자 (숫자는 카운트업 애니메이션)</div>${D.stats.map((s, i) => `<div class="fg" style="grid-template-columns:1fr 1fr 2fr auto;align-items:end;margin-bottom:10px"><label class="f"><span>숫자</span><input data-i="${i}" data-f="value" value="${esc(s.value)}"></label><label class="f"><span>단위</span><input data-i="${i}" data-f="suffix" value="${esc(s.suffix)}"></label><label class="f"><span>설명</span><input data-i="${i}" data-f="label" value="${esc(s.label)}"></label><button class="b b-del" data-rm="${i}">삭제</button></div>`).join('')}<div style="display:flex;gap:8px;justify-content:flex-end"><button class="b b-line" data-add>+ 추가</button><button class="b b-pri" data-s>저장</button></div>`;

@@ -51,7 +51,7 @@
   const langSw = (cls) => `<a class="lang ${cls || ''}" href="${langHref()}" hreflang="${EN ? 'ko' : 'en'}" lang="${EN ? 'ko' : 'en'}" aria-label="${EN ? '한국어' : 'English'}"><b class="${EN ? '' : 'on'}">KO</b><i></i><b class="${EN ? 'on' : ''}">EN</b></a>`;
 
   function logo() {
-    return `<a class="logo" href="${L('index.html')}" aria-label="${esc(D.company.name)} ${t('홈', 'Home')}"><span class="logo-mark">${esc(D.company.brand)}<sup>®</sup></span><span class="logo-txt"><b>${esc(D.company.name.replace('주식회사 ', ''))}</b><small>${esc(D.company.brandSub)}</small></span></a>`;
+    return `<a class="logo" href="${L('index.html')}" aria-label="${esc(D.company.name)} ${t('홈', 'Home')}"><img class="logo-img" src="assets/logo-mark.svg" alt="${esc(D.company.brand)}" width="72" height="34"><span class="logo-txt"><b>${esc(D.company.name.replace('주식회사 ', ''))}</b><small>${esc(D.company.brandSub)}</small></span></a>`;
   }
 
   /* ---------- Header / Footer ---------- */
@@ -137,15 +137,23 @@
     t.textContent = msg; t.classList.add('show');
     clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3200);
   }
-  window.SMG.toast = toast;
+  window.SMG.toast = toast; window.SMG.t = t; window.SMG.telHref = telHref;
 
-  function lightbox(src) {
+  function lightbox(src, list) {
+    list = list && list.length ? list : [src]; let i = Math.max(0, list.indexOf(src));
     const m = document.createElement('div');
-    m.className = 'modal open lightbox';
-    m.innerHTML = `<img src="${esc(src)}" alt="">`;
-    m.onclick = () => m.remove();
-    document.body.appendChild(m);
+    m.className = 'modal open lightbox'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+    m.innerHTML = `<button class="lb-x" aria-label="${t('닫기', 'Close')}">×</button>${list.length > 1 ? `<button class="lb-nav prev" aria-label="${t('이전', 'Previous')}">‹</button><button class="lb-nav next" aria-label="${t('다음', 'Next')}">›</button><div class="lb-count"></div>` : ''}<img src="" alt="">`;
+    const img = $('img', m), cnt = $('.lb-count', m);
+    const show = (k) => { i = (k + list.length) % list.length; img.src = list[i]; if (cnt) cnt.textContent = (i + 1) + ' / ' + list.length; };
+    const close = () => { m.remove(); removeEventListener('keydown', key); };
+    const key = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') show(i + 1); if (e.key === 'ArrowLeft') show(i - 1); };
+    m.onclick = (e) => { if (e.target.closest('.lb-nav')) { show(i + (e.target.closest('.next') ? 1 : -1)); return; } if (e.target === img && list.length > 1) return; close(); };
+    let sx = 0; m.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+    m.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) show(i + (dx < 0 ? 1 : -1)); }, { passive: true });
+    addEventListener('keydown', key); show(i); document.body.appendChild(m); $('.lb-x', m).focus();
   }
+  window.SMG.lightbox = lightbox;
 
   function reveal() {
     const els = $$('.rv');
@@ -181,7 +189,8 @@
 
   P.home = function () {
     const h = D.hero;
-    $('#hero').innerHTML = `<div class="hero-bg" style="background-image:url('${esc(h.image)}')"></div><div class="grid-lines"></div>
+    const slides = (h.images && h.images.length ? h.images : [h.image]).filter(Boolean);
+    $('#hero').innerHTML = `${slides.map((s, i) => `<div class="hero-bg${i ? '' : ' on'}" style="background-image:url('${esc(s)}')"></div>`).join('')}<div class="grid-lines"></div>${slides.length > 1 ? `<div class="hero-dots" role="tablist" aria-label="${t('메인 이미지', 'Hero images')}">${slides.map((_, i) => `<button class="${i ? '' : 'on'}" aria-label="${i + 1}"><i></i></button>`).join('')}</div>` : ''}
       <div class="container"><span class="eyebrow">${esc(h.eyebrow)}</span><h1>${esc(h.title)}</h1><p class="lead">${esc(h.subtitle)}</p>
       <div class="hero-cta"><a class="btn btn-primary" href="${L('products.html')}">${esc(h.ctaPrimary)} ${I.arrow}</a><a class="btn btn-ghost" href="${L('contact.html')}">${esc(h.ctaSecondary)}</a><a class="btn btn-ghost" href="${esc(D.settings.catalogPdf)}" download>${I.dl} ${t('카탈로그 PDF', 'Catalog PDF')}</a></div>
       <div class="hero-stats">${D.stats.map((s) => `<div><b data-count="${esc(s.value)}">${esc(s.value)}<em>${esc(s.suffix)}</em></b><span>${esc(s.label)}</span></div>`).join('')}</div></div>
@@ -256,7 +265,7 @@
       <div class="pd-actions"><a class="btn btn-primary" href="${L('contact.html?product=' + encodeURIComponent(p.code + ' ' + p.name))}">${t('이 제품 견적 문의', 'Request a quote for this product')} ${I.arrow}</a><a class="btn btn-line" href="${esc(D.settings.catalogPdf)}" download>${I.dl} ${t('카탈로그', 'Catalog')}</a><a class="btn btn-line" href="${telHref(D.company.tel)}">${I.phone} ${t('전화 상담', 'Call us')}</a></div></div>`;
     const main = $('#pd-main img');
     $$('.pd-thumbs button').forEach((b) => (b.onclick = () => { main.src = b.dataset.src; $$('.pd-thumbs button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); }));
-    $('#pd-main').onclick = () => lightbox(main.src);
+    $('#pd-main').onclick = () => lightbox(main.getAttribute('src'), p.images);
     const mq = $('#mbar-q'); if (mq) mq.href = L('contact.html?product=' + encodeURIComponent(p.code + ' ' + p.name));
     if (p.images.length > 1) {
       let idx = 0; const thumbs = $$('.pd-thumbs button');
@@ -267,7 +276,7 @@
       let sx = 0, sy = 0, moved = false; const el = $('#pd-main');
       el.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; moved = false; }, { passive: true });
       el.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { moved = true; show(idx + (dx < 0 ? 1 : -1)); } }, { passive: true });
-      el.onclick = () => { if (!moved) lightbox(main.src); moved = false; };
+      el.onclick = () => { if (!moved) lightbox(main.getAttribute('src'), p.images); moved = false; };
     }
     const cp = $('#cp'); if (cp) cp.onclick = () => { (navigator.clipboard ? navigator.clipboard.writeText(p.orderCode) : Promise.reject()).then(() => toast(t('Ordering Code 복사됨', 'Ordering code copied')), () => toast(p.orderCode)); };
     const rel = D.products.filter((x) => x.category === p.category && x.id !== p.id).slice(0, 4);
@@ -300,7 +309,7 @@
   }
 
   P.applications = function () {
-    $('#ind-list').innerHTML = D.industries.map((x) => `<div class="ind rv"><img src="${esc(x.image)}" alt="" loading="lazy"><div><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></div></div>`).join('');
+    $('#ind-list').innerHTML = D.industries.map((x) => { const ps = (x.products || []).map((id) => D.products.find((p) => p.id === id)).filter(Boolean); return `<article class="ind-row rv"><div class="ind-img"><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></div><div class="ind-body"><h3>${esc(x.title)}</h3><p>${esc(x.desc)}</p>${ps.length ? `<div class="ind-prods"><span>${t('추천 제품', 'Recommended products')}</span>${ps.map((p) => `<a href="${L('product.html?id=' + encodeURIComponent(p.id))}"><b>${esc(p.code)}</b>${esc(dispName(p))}</a>`).join('')}</div>` : ''}</div></article>`; }).join('');
     const dsec = $('#defense'); if (dsec && !(D.defense || []).length) { dsec.remove(); return; }
     $('#def-list').innerHTML = D.defense.map((x) => `<div class="ind rv" style="aspect-ratio:16/11"><img src="${esc(x.image)}" alt="" loading="lazy"><div><span style="color:#ff8a82;font-weight:700;font-size:12px;letter-spacing:.1em">${t('적용처', 'Application')}</span><b>${esc(x.title)}</b></div></div>`).join('');
   };
@@ -351,7 +360,7 @@
       if (sent) {
         form.reset(); showDone(t('문의가 정상 접수되었습니다', 'Your inquiry has been submitted'), t('담당자가 확인 후 영업일 기준 1~2일 내 회신드리겠습니다.', 'Our team will reply within 1–2 business days.'));
       } else {
-        const body = EN ? `[Type] ${data.type}\n[Product] ${data.product || '-'}\n[Company] ${data.company}\n[Name] ${data.name}\n[Phone] ${data.phone}\n[Email] ${data.email}\n[Qty/Lead time] ${data.qty || '-'}\n\n${data.message}` : `[문의유형] ${data.type}\n[관심제품] ${data.product || '-'}\n[회사명] ${data.company}\n[담당자] ${data.name}\n[연락처] ${data.phone}\n[이메일] ${data.email}\n[수량/납기] ${data.qty || '-'}\n\n${data.message}`;
+        const body = EN ? `[Type] ${data.type}\n[Product] ${data.product || '-'}\n[Company] ${data.company}\n[Name] ${data.name}\n[Phone] ${data.phone}\n[Email] ${data.email}\n[Qty/Lead time] ${data.qty || '-'}${data.items ? '\n[Items]\n' + data.items : ''}\n\n${data.message}` : `[문의유형] ${data.type}\n[관심제품] ${data.product || '-'}\n[회사명] ${data.company}\n[담당자] ${data.name}\n[연락처] ${data.phone}\n[이메일] ${data.email}\n[수량/납기] ${data.qty || '-'}${data.items ? '\n[견적 품목]\n' + data.items : ''}\n\n${data.message}`;
         location.href = `mailto:${D.settings.notifyEmail || c.email}?subject=${encodeURIComponent(t('[홈페이지 문의] ', '[Website Inquiry · EN] ') + data.type + ' - ' + data.company)}&body=${encodeURIComponent(body)}`;
         showDone(t('메일 앱으로 문의 내용을 전달합니다', 'Opening your email app'), t(`메일 앱이 열리지 않으면 ${c.email} 또는 ${c.tel}로 연락 주세요.`, `If your email app does not open, please contact ${c.email} or ${c.tel}.`));
       }
@@ -372,6 +381,8 @@
     renderChrome();
     const pg = document.body.dataset.page;
     if (P[pg]) P[pg]();
+    if (typeof window.SMG_EXTRAS === 'function') window.SMG_EXTRAS(pg);
+    window.SMG.booted = true;
     reveal(); countUp();
     if (D.settings.gaId && /^G-[A-Z0-9]+$/.test(D.settings.gaId)) {
       const s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + D.settings.gaId; document.head.appendChild(s);

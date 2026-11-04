@@ -2,7 +2,7 @@
  * Edit in admin.html (language: EN) → Publish replaces this file.
  */
 window.SMG_DATA_EN = {
-  "version": 2,
+  "version": 3,
   "updatedAt": "2026-11-03",
   "company": {
     "name": "SMG Co., Ltd.",
@@ -37,7 +37,13 @@ window.SMG_DATA_EN = {
     "subtitle": "Temperature Sensors · Thermowells · Heaters · Pressure Transmitters · Cable Bushings · Feedthroughs\n35 years of manufacturing expertise and global explosion-proof certifications",
     "image": "assets/img/hero.webp",
     "ctaPrimary": "View Products",
-    "ctaSecondary": "Request a Quote"
+    "ctaSecondary": "Request a Quote",
+    "images": [
+      "assets/img/cover-ship.webp",
+      "assets/img/cover-motor.webp",
+      "assets/img/cover-plant.webp",
+      "assets/img/back-wafer.webp"
+    ]
   },
   "stats": [
     {
@@ -201,7 +207,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": true
+      "featured": true,
+      "catalogPage": 4,
+      "tmin": -55,
+      "tmax": 180
     },
     {
       "id": "btr51",
@@ -253,7 +262,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 6,
+      "tmin": -55,
+      "tmax": 180
     },
     {
       "id": "std",
@@ -308,7 +320,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 8,
+      "tmin": -55,
+      "tmax": 265
     },
     {
       "id": "str",
@@ -363,7 +378,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": true
+      "featured": true,
+      "catalogPage": 10,
+      "tmin": -200,
+      "tmax": 650
     },
     {
       "id": "stc",
@@ -413,7 +431,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 12,
+      "tmin": -200,
+      "tmax": 2200
     },
     {
       "id": "stm",
@@ -457,7 +478,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": true
+      "featured": true,
+      "catalogPage": 14,
+      "tmin": -40,
+      "tmax": 200
     },
     {
       "id": "sts",
@@ -506,7 +530,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 16,
+      "tmin": 40,
+      "tmax": 150
     },
     {
       "id": "stw",
@@ -556,7 +583,8 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 18
     },
     {
       "id": "hm",
@@ -622,7 +650,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 20,
+      "tmin": -60,
+      "tmax": 400
     },
     {
       "id": "hk",
@@ -679,7 +710,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": true
+      "featured": true,
+      "catalogPage": 22,
+      "tmin": -50,
+      "tmax": 160
     },
     {
       "id": "hc",
@@ -716,7 +750,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 24,
+      "tmin": -55,
+      "tmax": 80
     },
     {
       "id": "he",
@@ -782,7 +819,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 26,
+      "tmin": -50,
+      "tmax": 120
     },
     {
       "id": "hs",
@@ -827,7 +867,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 28,
+      "tmin": -50,
+      "tmax": 200
     },
     {
       "id": "metal-chuck-heater",
@@ -884,7 +927,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": true
+      "featured": true,
+      "catalogPage": 30,
+      "tmin": -60,
+      "tmax": 400
     },
     {
       "id": "metal-plate-heater",
@@ -937,7 +983,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 32,
+      "tmin": -60,
+      "tmax": 400
     },
     {
       "id": "spt",
@@ -979,7 +1028,8 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 34
     },
     {
       "id": "cb",
@@ -1023,7 +1073,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 36,
+      "tmin": -55,
+      "tmax": 110
     },
     {
       "id": "gb",
@@ -1082,7 +1135,10 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": true
+      "featured": true,
+      "catalogPage": 38,
+      "tmin": -253,
+      "tmax": 100
     },
     {
       "id": "mb",
@@ -1138,39 +1194,79 @@ window.SMG_DATA_EN = {
         ]
       ],
       "orderCode": "",
-      "featured": false
+      "featured": false,
+      "catalogPage": 40,
+      "tmin": -196,
+      "tmax": 450
     }
   ],
   "industries": [
     {
       "title": "Power Generation",
       "desc": "Winding and coil-end temperature monitoring for generators and large motors",
-      "image": "assets/img/cover-motor.webp"
+      "image": "assets/img/cover-motor.webp",
+      "products": [
+        "fx-tx",
+        "btr51",
+        "std",
+        "str"
+      ]
     },
     {
       "title": "Shipbuilding · LNG/LH₂",
       "desc": "-253℃ cryogenic feedthroughs and low-temperature cable bushings",
-      "image": "assets/img/cover-ship.webp"
+      "image": "assets/img/cover-ship.webp",
+      "products": [
+        "gb",
+        "mb",
+        "cb",
+        "stw"
+      ]
     },
     {
       "title": "Petrochemical · Plant",
       "desc": "Explosion-proof RTD/TC, thermowells, pressure transmitters",
-      "image": "assets/img/back-plant.webp"
+      "image": "assets/img/back-plant.webp",
+      "products": [
+        "str",
+        "stc",
+        "stw",
+        "spt",
+        "cb"
+      ]
     },
     {
       "title": "Semiconductor · Display",
       "desc": "Metal chuck & plate heaters, multi-point thermocouples",
-      "image": "assets/img/back-wafer.webp"
+      "image": "assets/img/back-wafer.webp",
+      "products": [
+        "metal-chuck-heater",
+        "metal-plate-heater",
+        "stm",
+        "hm",
+        "hk"
+      ]
     },
     {
       "title": "Defense",
       "desc": "Heaters for optical/laser equipment, clear-view heaters for military devices",
-      "image": "assets/img/back-tank.webp"
+      "image": "assets/img/back-tank.webp",
+      "products": [
+        "hk",
+        "hc",
+        "he",
+        "hm"
+      ]
     },
     {
       "title": "Aerospace",
       "desc": "Film heaters for electronics preheating, surface temperature sensors",
-      "image": "assets/img/back-satellite.webp"
+      "image": "assets/img/back-satellite.webp",
+      "products": [
+        "hk",
+        "std",
+        "he"
+      ]
     }
   ],
   "defense": [],
