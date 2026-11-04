@@ -12,7 +12,7 @@ window.SMG_DATA_EN = {
     "slogan": "A Higher Degree of Confidence for SMG Products",
     "founded": 1990,
     "ceo": "",
-    "bizNo": "",
+    "bizNo": "139-81-39520",
     "address": "305, Sihwa venture-ro, Siheung-si, Gyeonggi-do, South Korea (Sihwa MTV 3sa #204)",
     "addressEn": "305, Sihwa venture-ro, Siheung-si, Gyeonggi-do, South Korea",
     "tel": "+82-31-504-7766",

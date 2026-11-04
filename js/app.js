@@ -351,8 +351,10 @@
       const ep = (D.settings.formEndpoint || '').trim();
       if (ep) {
         try {
-          const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ _subject: `[${t('홈페이지 문의', 'Website Inquiry · EN')}] ${data.type} - ${data.company}`, lang: EN ? 'EN' : 'KO' }, data)) });
-          sent = r.ok;
+          const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ _subject: `[${t('홈페이지 문의', 'Website Inquiry · EN')}] ${data.type} - ${data.company}`, subject: `[${t('홈페이지 문의', 'Website Inquiry · EN')}] ${data.type} - ${data.company}`, _replyto: data.email, _template: 'table', _captcha: 'false', lang: EN ? 'EN' : 'KO' }, data)) });
+          // Formspree / FormSubmit / Web3Forms 공통: HTTP 성공 + 응답 본문의 success 플래그 확인 (미인증 폼은 success:false)
+          let j = null; try { j = await r.clone().json(); } catch (x) { j = null; }
+          sent = r.ok && !(j && (j.success === false || j.success === 'false' || j.ok === false || (Array.isArray(j.errors) && j.errors.length)));
         } catch (err) { sent = false; }
       }
       try { const arr = JSON.parse(safeGet(INQ_KEY) || '[]'); arr.unshift(rec); safeSet(INQ_KEY, JSON.stringify(arr.slice(0, 500))); } catch (err) {}
