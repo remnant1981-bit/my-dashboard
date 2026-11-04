@@ -91,7 +91,7 @@
       sw.innerHTML = `<button type="button" data-v="list" class="on" role="tab">${IC.list}<span>${t('목록', 'List')}</span></button><button type="button" data-v="cmp" role="tab">${IC.chart}<span>${t('온도 범위 비교', 'Temperature range')}</span></button>`;
       head.insertAdjacentElement('afterend', sw);
       const cmp = document.createElement('div'); cmp.id = 'pl-cmp'; cmp.hidden = true; grid.insertAdjacentElement('afterend', cmp);
-      let view = new URLSearchParams(location.search).get('view') === 'cmp' ? 'cmp' : 'list', T = '';
+      const qp = new URLSearchParams(location.search); let view = qp.get('view') === 'cmp' ? 'cmp' : 'list', T = /^-?\d{1,4}$/.test(qp.get('t') || '') ? qp.get('t') : '';
       const f = (x) => Math.sign(x) * Math.log10(1 + Math.abs(x) / 25);
       const lo = f(-273), hi = f(2300), pos = (x) => ((f(x) - lo) / (hi - lo)) * 100;
       const ticks = [-253, -100, 0, 100, 300, 1000, 2200];
