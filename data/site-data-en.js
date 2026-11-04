@@ -29,7 +29,15 @@ window.SMG_DATA_EN = {
     "gaId": "",
     "showPopup": false,
     "popupTitle": "",
-    "popupBody": ""
+    "popupBody": "",
+    "chat": {
+      "enabled": true,
+      "kakaoChannel": "",
+      "channelTalkKey": "",
+      "hoursStart": "09:00",
+      "hoursEnd": "18:00",
+      "greeting": ""
+    }
   },
   "hero": {
     "eyebrow": "Since 1990 · Sensor · Heater · Feedthrough",
