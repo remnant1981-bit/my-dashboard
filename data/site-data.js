@@ -38,7 +38,8 @@ window.SMG_DEFAULT_DATA = {
       "hoursStart": "09:00",
       "hoursEnd": "18:00",
       "greeting": ""
-    }
+    },
+    "adminHash": "bc95e941d8ee82f89c78f8d1cc961ba5bc1f644b3d47293c21d27a506bc660c8"
   },
   "hero": {
     "eyebrow": "Since 1990 · Sensor · Heater · Feedthrough",
