@@ -19,5 +19,6 @@ SMG(주식회사 에스엠지) 기업 홈페이지. 정적 HTML/CSS/JS, 빌드 �
 - 변경은 브랜치 + PR로 진행, 병합은 담당자(박장훈) 승인 후
 - 국문 콘텐츠 수정 시 영문도 같이 반영, 모바일(390px)·데스크톱 모두 확인
 - **운영 중인 사이트: 전면 개편 금지.** 작은 단위로 수정·테스트·PR, 반영 후 실사이트 재확인
+- 디자인 스킬(frontend-design, ui-ux-pro-max, hallmark, emil-design-eng, web-design-guidelines)은 **신규 페이지·점검(감사)용**. 운영 중인 사이트의 디자인 전면 변경 제안·적용 금지 — 위 운영 원칙이 우선
 - 전체 현황·절차: `docs/operations-manual.md`
 - 응답: 한국어, 간결
