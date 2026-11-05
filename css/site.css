@@ -915,3 +915,4 @@ a.cmp-lab:hover b{color:var(--red)}
 }
 @media print{.chat-launch,.chat-panel{display:none!important}}
 @media (prefers-reduced-motion:reduce){.cl-dot.on,.cm.new,.cm.typing i{animation:none}}
+@media (max-width:640px){.fab .chat-launch{display:none}}
