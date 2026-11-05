@@ -19,8 +19,8 @@ window.SMG_DATA_EN = {
     "fax": "+82-31-504-0200",
     "email": "sungsil@sungsil.com",
     "website": "www.sungsil.com",
-    "hours": "Mon–Fri 09:00–18:00 KST (closed on weekends & Korean holidays)",
-    "mapQuery": "경기도 시흥시 시화벤처로 305"
+    "hours": "Mon–Thu 08:30–17:30 · Fri 08:30–16:30 KST (closed on weekends & Korean holidays)",
+    "mapQuery": "305 Sihwa venture-ro, Siheung-si, Gyeonggi-do, South Korea"
   },
   "settings": {
     "formEndpoint": "",
@@ -34,8 +34,9 @@ window.SMG_DATA_EN = {
       "enabled": true,
       "kakaoChannel": "",
       "channelTalkKey": "",
-      "hoursStart": "09:00",
-      "hoursEnd": "18:00",
+      "hoursStart": "08:30",
+      "hoursEnd": "17:30",
+      "hoursEndFri": "16:30",
       "greeting": ""
     }
   },

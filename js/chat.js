@@ -7,7 +7,7 @@
   function start() {
     const S = window.SMG; if (!S || S.chatDone) return; S.chatDone = true;
     const D = S.data, t = S.t, L = S.L, esc = S.esc, EN = S.EN;
-    const C = Object.assign({ enabled: true, kakaoChannel: '', channelTalkKey: '', hoursStart: '09:00', hoursEnd: '18:00', greeting: '' }, D.settings.chat || {});
+    const C = Object.assign({ enabled: true, kakaoChannel: '', channelTalkKey: '', hoursStart: '08:30', hoursEnd: '17:30', hoursEndFri: '16:30', greeting: '' }, D.settings.chat || {});
     if (C.enabled === false) return;
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -21,8 +21,11 @@
     /* ---------- business hours (KST) ---------- */
     const kst = () => { const n = new Date(); return new Date(n.getTime() + (n.getTimezoneOffset() + 540) * 60000); };
     const hm = (s) => { const [h, m] = String(s).split(':').map(Number); return h * 60 + (m || 0); };
-    const isOpen = () => { const k = kst(); const d = k.getDay(), mins = k.getHours() * 60 + k.getMinutes(); return d >= 1 && d <= 5 && mins >= hm(C.hoursStart) && mins < hm(C.hoursEnd); };
-    const statusText = () => isOpen() ? t(`지금 상담 가능 · 평일 ${C.hoursStart}–${C.hoursEnd}`, `Online now · Mon–Fri ${C.hoursStart}–${C.hoursEnd} KST`) : t(`운영시간 외 · 남겨주시면 다음 영업일에 회신드립니다`, `Offline · we'll reply next business day`);
+    const isOpen = () => { const k = kst(); const d = k.getDay(), mins = k.getHours() * 60 + k.getMinutes(); return d >= 1 && d <= 5 && mins >= hm(C.hoursStart) && mins < hm(d === 5 ? (C.hoursEndFri || C.hoursEnd) : C.hoursEnd); };
+    const fri = C.hoursEndFri && C.hoursEndFri !== C.hoursEnd;
+    const hoursKo = fri ? `월–목 ${C.hoursStart}–${C.hoursEnd} · 금 ${C.hoursStart}–${C.hoursEndFri}` : `평일 ${C.hoursStart}–${C.hoursEnd}`;
+    const hoursEn = fri ? `Mon–Thu ${C.hoursStart}–${C.hoursEnd} · Fri ${C.hoursStart}–${C.hoursEndFri} KST` : `Mon–Fri ${C.hoursStart}–${C.hoursEnd} KST`;
+    const statusText = () => isOpen() ? t(`지금 상담 가능 · ${hoursKo}`, `Online now · ${hoursEn}`) : t(`운영시간 외 · 남겨주시면 다음 영업일에 회신드립니다`, `Offline · we'll reply next business day`);
 
     /* ---------- Channel Talk (optional live messenger) ---------- */
     let channelReady = false;
@@ -169,7 +172,7 @@
       if (k === 'find') { state.flow = { kind: 'find' }; persist(); return bot(t('찾으시는 제품의 <b>모델명·용도·사용온도</b>를 입력해 주세요.<br>예: <i>LNG 피드스루</i>, <i>-196도</i>, <i>PT100</i>', 'Type a <b>model, application or temperature</b>.<br>e.g. <i>LNG feedthrough</i>, <i>-196 temp</i>, <i>PT100</i>'), [['menu', t('처음으로', 'Main menu')]]); }
       if (k === 'faq') return bot(t('자주 묻는 질문입니다.', 'Frequently asked questions:'), (D.faq || []).slice(0, 5).map((f, i) => ['faq' + i, f.q]).concat([['menu', t('처음으로', 'Main menu')]]));
       if (/^faq\d+$/.test(k)) { const f = D.faq[+k.slice(3)]; return bot(esc(f.a), [['quote', t('견적 요청', 'Request a quote')], ['faq', t('다른 질문', 'Other questions')], ['menu', t('처음으로', 'Main menu')]]); }
-      if (k === 'call') return bot(t(`대표전화 <a href="${S.telHref(D.company.tel)}"><b>${esc(D.company.tel)}</b></a> (평일 ${C.hoursStart}–${C.hoursEnd})<br>이메일 <a href="mailto:${esc(D.company.email)}">${esc(D.company.email)}</a>`, `Phone <a href="${S.telHref(D.company.tel)}"><b>${esc(D.company.tel)}</b></a> (Mon–Fri ${C.hoursStart}–${C.hoursEnd} KST)<br>Email <a href="mailto:${esc(D.company.email)}">${esc(D.company.email)}</a>`), mainMenu());
+      if (k === 'call') return bot(t(`대표전화 <a href="${S.telHref(D.company.tel)}"><b>${esc(D.company.tel)}</b></a> (${hoursKo})<br>이메일 <a href="mailto:${esc(D.company.email)}">${esc(D.company.email)}</a>`, `Phone <a href="${S.telHref(D.company.tel)}"><b>${esc(D.company.tel)}</b></a> (${hoursEn})<br>Email <a href="mailto:${esc(D.company.email)}">${esc(D.company.email)}</a>`), mainMenu());
       if (k === 'menu') { state.flow = null; persist(); return bot(t('무엇을 도와드릴까요?', 'How can I help you?'), mainMenu()); }
     }
     async function onUser(v) {
