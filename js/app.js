@@ -33,7 +33,9 @@
   }
   async function sendInquiry(subject, data) {
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
-    if (ep && await postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data))) return 'primary';
+    // 점검용: contact.html?backuptest=1 이면 1순위를 건너뛰고 예비(Web3Forms)로만 전송
+    const backupTest = params.get('backuptest') === '1';
+    if (ep && !backupTest && await postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data))) return 'primary';
     if (key && await postJSON('https://api.web3forms.com/submit', Object.assign({}, data, { access_key: key, subject, from_name: EN ? 'SMG Website' : 'SMG 홈페이지', replyto: data.email || undefined }))) return 'backup';
     return '';
   }
