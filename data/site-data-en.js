@@ -1063,7 +1063,7 @@ window.SMG_DATA_EN = {
         "IECEx BAS 11.0056X",
         "KGS12-GA2B0-0245X",
         "KSCP 25ATEX0005X",
-        "IECEx KSCP 25.00006X",
+        "IECEx KSCP 25.0006X",
         "EN/IEC 60079-0 · 60079-1 (Ex d)"
       ],
       "specs": [
