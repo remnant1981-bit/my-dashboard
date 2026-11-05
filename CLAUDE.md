@@ -7,6 +7,7 @@ SMG(주식회사 에스엠지) 기업 홈페이지. 정적 HTML/CSS/JS, 빌드 �
 - 콘텐츠: `data/site-data.js`(국문, 설정 포함) / `data/site-data-en.js`(영문)
 - 렌더링: `js/app.js` + `js/extras.js` · `js/motion.js` · `js/chat.js`, 관리자 `admin.html` + `js/admin.js`
 - 영문 페이지 `en/*.html`은 생성물 → 국문 HTML 수정 후 `python3 tools/build_en_pages.py .` 실행
+- CSS·JS 수정 후 반드시 `python3 tools/stamp_assets.py` (파일 버전 표시 → 방문자 브라우저가 새 파일을 바로 받음). 모든 생성 스크립트 뒤 마지막에 실행
 - 제품 상세 정적 페이지 `product/*.html`, `en/product/*.html`, `sitemap.xml` 제품 항목은 생성물 → 제품 데이터 변경 후 `python3 tools/build_og_images.py` (새 제품·대표사진 변경 시) → `node tools/build_product_pages.js`
 - 문의 전송: `js/app.js`의 `SMG.sendInquiry` (Web3Forms → Formspree → 메일앱, 서비스별 12초 제한)
 - 로컬 확인: `python3 -m http.server 8000`
