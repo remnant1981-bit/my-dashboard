@@ -30,6 +30,13 @@ window.SMG_DEFAULT_DATA = {
     "notifyEmail": "sungsil@sungsil.com",
     "catalogPdf": "assets/SMG_Products_Catalogue_2026.pdf",
     "gaId": "",
+    "sheetEndpoint": "",
+    "downloadGate": "optional",
+    "videoUrl": "",
+    "videoTitle": "",
+    "videoTitleEn": "",
+    "videoOnHome": false,
+    "casesEnabled": false,
     "naverWa": "",
     "showPopup": false,
     "popupTitle": "",
@@ -1567,6 +1574,7 @@ window.SMG_DEFAULT_DATA = {
       "a": "가능합니다. 수출유망중소기업으로서 해외 고객사에 납품하고 있으며, Honeywell 공식 대리점(APAC)으로 활동하고 있습니다. 영문 문의도 환영합니다."
     }
   ],
+  "cases": [],
   "inquiryTypes": [
     "견적 요청",
     "기술 문의",

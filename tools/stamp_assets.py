@@ -6,7 +6,7 @@
 import glob, hashlib, os, re
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 os.chdir(ROOT)
-ASSETS = ['css/site.css', 'css/admin.css', 'js/app.js', 'js/extras.js', 'js/motion.js', 'js/chat.js', 'js/admin.js']
+ASSETS = ['css/site.css', 'css/admin.css', 'js/app.js', 'js/extras.js', 'js/motion.js', 'js/chat.js', 'js/features.js', 'js/admin.js', 'data/img-variants.js']
 ver = {a: hashlib.sha1(open(a, 'rb').read()).hexdigest()[:8] for a in ASSETS if os.path.exists(a)}
 pat = re.compile(r'((?:src|href)=")(' + '|'.join(re.escape(a) for a in ver) + r')(\?v=[0-9a-f]+)?(")')
 n = 0

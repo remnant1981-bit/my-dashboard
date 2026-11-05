@@ -5,6 +5,8 @@ import re, sys, os
 root = sys.argv[1]
 os.makedirs(f'{root}/en', exist_ok=True)
 T = {
+    '제품 사양 비교': 'Compare products',
+    '납품 실적·사례': 'References',
  # index
  'ATEX · IECEx · KCs · KTL 방폭 인증, BV 선급, ASME PTC 19.3 설계 기준과 ISO 품질·환경 경영 시스템을 기반으로 위험지역에서도 안전한 제품을 공급합니다.': 'Backed by ATEX · IECEx · KCs · KTL explosion-proof certifications, BV marine classification, ASME PTC 19.3 design standards and ISO quality & environmental management, we supply products that are safe even in hazardous areas.',
  'SMG 소식': 'News', 'SMG 제품 라인업': 'SMG product line-up', 'SMG의 기술': 'critical industrial equipment',
@@ -54,6 +56,8 @@ META = {
  'applications': ('Applications | SMG Co., Ltd.', 'Power generation, shipbuilding LNG/LH₂, petrochemical, semiconductor & display, defense and aerospace applications.'),
  'support': ('Support | SMG Co., Ltd.', 'News, catalog downloads and FAQ.'),
  'notice': ('News | SMG Co., Ltd.', 'News and announcements from SMG Co., Ltd.'),
+ 'compare': ('Compare products | SMG Co., Ltd.', 'Compare specifications of SMG sensors, heaters and feedthroughs side by side.'),
+ 'cases': ('References | SMG Co., Ltd.', 'SMG supply references and application cases.'),
  'contact': ('Contact | SMG Co., Ltd.', 'Online inquiry for quotations, technical consultation and samples.'),
  'privacy': ('Privacy Policy | SMG Co., Ltd.', 'SMG Co., Ltd. privacy policy.'),
  '404': ('Page not found | SMG Co., Ltd.', 'Page not found.'),
@@ -61,7 +65,7 @@ META = {
 PRIVACY_EN = '''<main id="main"><section class="sec"><div class="container prose" style="max-width:860px">
 <p><b data-co="name"></b> (the "Company") protects the personal information of data subjects in accordance with the Personal Information Protection Act of Korea and discloses this privacy policy.</p>
 <h3 style="margin-top:36px">1. Information we collect</h3><p>When you submit a quotation or technical inquiry, we collect your company name, name, phone number, email and message.</p>
-<h3 style="margin-top:28px">2. Purpose of use</h3><p>Used only to respond to inquiries, send quotations and provide technical consultation.</p>
+<h3 style="margin-top:28px">2. Purpose of use</h3><p>Used only to respond to inquiries, send quotations and provide technical consultation, and—when you request a download—to record the download and send product and technical information.</p>
 <h3 style="margin-top:28px">3. Retention period</h3><p>Retained for 3 years after the inquiry is handled and destroyed without delay thereafter, unless retention is required by law.</p>
 <h3 style="margin-top:28px">4. Disclosure to third parties</h3><p>We do not provide personal information to third parties except with your consent or as required by law.</p>
 <h3 style="margin-top:28px">4-1. Outsourcing</h3><p>To forward website inquiries to our staff by email, we may use external form delivery and chat services (Web3Forms, with Formspree as backup; optionally KakaoTalk Channel, Channel Talk). The service provider does not use personal information for any other purpose.</p>
@@ -70,7 +74,7 @@ PRIVACY_EN = '''<main id="main"><section class="sec"><div class="container prose
 <h3 style="margin-top:28px">6. Contact</h3><p>Email: <span data-co="email"></span> · Phone: <span data-co="tel"></span></p>
 <p style="margin-top:36px;font-size:14px">Effective date: November 2, 2026</p></div></section></main>'''
 SITE = 'https://www.sungsil.com/'
-PAGES = ['index', 'about', 'products', 'product', 'applications', 'support', 'notice', 'contact', 'privacy', '404']
+PAGES = ['index', 'about', 'products', 'product', 'applications', 'support', 'notice', 'compare', 'cases', 'contact', 'privacy', '404']
 for name in PAGES:
     s = open(f'{root}/{name}.html', encoding='utf-8').read()
     s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
@@ -98,7 +102,7 @@ for name in PAGES:
     head, body = s.split('<body', 1)
     body = re.sub(r'(href)="([^"]*)"', fix, body)
     s = head + '<body' + body
-    canon = '' if name in ('product', 'notice', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
+    canon = '' if name in ('product', 'notice', 'cases', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
     hreflang = (f'<base href="../">\n<link rel="alternate" hreflang="ko" href="{SITE}{page_file}">\n<link rel="alternate" hreflang="en" href="{SITE}en/{page_file}">\n<link rel="alternate" hreflang="x-default" href="{SITE}{page_file}">\n' + canon)
     s = s.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + hreflang, 1)
     s = s.replace('<script src="data/site-data.js"></script>', '<script src="data/site-data.js"></script>\n<script src="data/site-data-en.js"></script>')
@@ -112,7 +116,7 @@ for name in PAGES:
 for name in PAGES:
     p = f'{root}/{name}.html'; s = open(p, encoding='utf-8').read()
     s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
-    canon = '' if name in ('product', 'notice', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
+    canon = '' if name in ('product', 'notice', 'cases', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
     s = s.replace('<meta charset="UTF-8">', f'<meta charset="UTF-8">\n<link rel="alternate" hreflang="ko" href="{SITE}{name}.html">\n<link rel="alternate" hreflang="en" href="{SITE}en/{name}.html">\n<link rel="alternate" hreflang="x-default" href="{SITE}{name}.html">' + canon, 1)
     open(p, 'w', encoding='utf-8').write(s)
 # home page canonical = site root (matches sitemap.xml)

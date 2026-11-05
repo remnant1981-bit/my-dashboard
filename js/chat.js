@@ -115,7 +115,7 @@
       let best = null, bs = 0; (D.faq || []).forEach((f) => { const hay = norm(f.q + ' ' + f.a); let sc = 0; k.forEach((w) => { if (hay.includes(w)) sc++; }); if (sc > bs) { bs = sc; best = f; } });
       return bs >= 2 ? best : null;
     }
-    const prodHtml = (ps) => `<div class="cm-prods">${ps.map((p) => `<a href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><img src="${esc(p.images[0])}" alt=""><span><b>${esc(p.code)}</b>${esc(EN ? p.name : p.nameKo)}${typeof p.tmin === 'number' ? `<small>${p.tmin} ~ ${p.tmax}℃</small>` : ''}</span></a>`).join('')}</div>`;
+    const prodHtml = (ps) => `<div class="cm-prods">${ps.map((p) => `<a href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><img src="${esc(S.img ? S.img.thumbSrc(p.images[0]) : p.images[0])}" alt="" loading="lazy"><span><b>${esc(p.code)}</b>${esc(EN ? p.name : p.nameKo)}${typeof p.tmin === 'number' ? `<small>${p.tmin} ~ ${p.tmax}℃</small>` : ''}</span></a>`).join('')}</div>`;
 
     /* ---------- inquiry flow ---------- */
     const STEPS = [
