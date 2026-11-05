@@ -25,7 +25,10 @@
   /* 문의 전송: 1순위 settings.formEndpoint(Formspree 등) → 실패(한도 초과·장애) 시 2순위 Web3Forms(settings.formBackupKey) */
   async function postJSON(url, body) {
     try {
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
+      // 서비스가 응답하지 않을 때 방문자가 무한정 기다리지 않도록 12초 제한 → 다음 순위로 전환
+      const ac = typeof AbortController === 'function' ? new AbortController() : null; const tm = ac && setTimeout(() => ac.abort(), 12000);
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body), signal: ac ? ac.signal : undefined });
+      if (tm) clearTimeout(tm);
       let j = null; try { j = await r.clone().json(); } catch (x) { j = null; }
       // 공통 성공 판정: HTTP 성공 + 응답 본문의 실패 플래그 없음 (미인증·한도초과는 success:false / errors)
       return r.ok && !(j && (j.success === false || j.success === 'false' || j.ok === false || (Array.isArray(j.errors) && j.errors.length)));
@@ -67,7 +70,7 @@
     { href: 'support.html', label: t('고객지원', 'Support'), sub: [['support.html#news', t('공지사항', 'News')], ['support.html#downloads', t('자료실', 'Downloads')], ['support.html#faq', 'FAQ']] },
     { href: 'contact.html', label: t('견적문의', 'Contact'), sub: [] }
   ];
-  const langHref = () => { const f = (location.pathname.split('/').pop() || 'index.html') + location.search; return EN ? f : 'en/' + f; };
+  const langHref = () => { const pid = document.body.dataset.pid; const f = pid ? 'product/' + pid + '.html' : (location.pathname.split('/').pop() || 'index.html') + location.search; return EN ? f : 'en/' + f; };
   const langSw = (cls) => `<a class="lang ${cls || ''}" href="${langHref()}" hreflang="${EN ? 'ko' : 'en'}" lang="${EN ? 'ko' : 'en'}" aria-label="${EN ? '한국어' : 'English'}"><b class="${EN ? '' : 'on'}">KO</b><i></i><b class="${EN ? 'on' : ''}">EN</b></a>`;
 
   function logo() {
@@ -77,7 +80,7 @@
   /* ---------- Header / Footer ---------- */
   function renderChrome() {
     const page = document.body.dataset.page;
-    const cur = location.pathname.split('/').pop() || 'index.html';
+    const cur = page === 'product' ? 'products.html' : (location.pathname.split('/').pop() || 'index.html');
     const hdr = document.createElement('header');
     hdr.className = 'hdr' + (page === 'home' ? '' : ' light');
     hdr.innerHTML = `<div class="container">${logo()}
@@ -145,7 +148,7 @@
   /* ---------- Shared components ---------- */
   function prodCard(p) {
     const cat = D.categories.find((c) => c.id === p.category);
-    return `<a class="prod-card" href="${L('product.html?id=' + encodeURIComponent(p.id))}">${p.certs && p.certs.length ? `<span class="chip">${t('방폭/선급 인증', 'Ex / Marine certified')}</span>` : ''}
+    return `<a class="prod-card" href="${L('product/' + encodeURIComponent(p.id) + '.html')}">${p.certs && p.certs.length ? `<span class="chip">${t('방폭/선급 인증', 'Ex / Marine certified')}</span>` : ''}
       <div class="img"><img src="${esc(p.images[0])}" alt="${esc(p.code + ' ' + p.name)}" loading="lazy"></div>
       <div class="body"><span class="tag" style="color:${esc(cat && cat.color || '')}">${esc(cat ? cat.nameEn : '')}</span><h3>${esc(p.code)}</h3><div class="en">${EN ? esc(p.name) : `${esc(p.nameKo)} · ${esc(p.name)}`}</div><p>${esc(p.summary)}</p><span class="more">${t('자세히 보기', 'View details')} ${I.arrow}</span></div></a>`;
   }
@@ -264,9 +267,9 @@
   };
 
   P.product = function () {
-    const p = D.products.find((x) => x.id === params.get('id')) || D.products[0];
+    const p = D.products.find((x) => x.id === (document.body.dataset.pid || params.get('id'))) || D.products[0];
     const cat = D.categories.find((c) => c.id === p.category) || {};
-    document.title = `${p.code} ${p.name} | ${D.company.name}`;
+    document.title = `${p.code} ${dispName(p)} | ${D.company.name}`;
     const md = document.querySelector('meta[name=description]'); if (md) md.content = p.summary;
     $('#crumb').innerHTML = `<a href="${L('index.html')}">HOME</a>/<a href="${L('products.html')}">${t('제품소개', 'Products')}</a>/<a href="${L('products.html?cat=' + cat.id)}">${esc(cat.name)}</a>`;
     $('#pd-cat').textContent = cat.nameEn || '';
@@ -302,10 +305,12 @@
     const rel = D.products.filter((x) => x.category === p.category && x.id !== p.id).slice(0, 4);
     $('#related').innerHTML = rel.length ? `<div class="sec-head"><div><span class="eyebrow">Related</span><h2 class="sec-title" style="font-size:32px">${t('같은 카테고리 제품', 'Related products')}</h2></div></div><div class="prod-grid">${rel.map(prodCard).join('')}</div>` : '';
     // JSON-LD
-    const cn = document.createElement('link'); cn.rel = 'canonical'; cn.href = 'https://www.sungsil.com/' + (EN ? 'en/' : '') + 'product.html?id=' + encodeURIComponent(p.id); document.head.appendChild(cn);
+    if (!document.querySelector('link[rel=canonical]')) { const cn = document.createElement('link'); cn.rel = 'canonical'; cn.href = 'https://www.sungsil.com/' + (EN ? 'en/' : '') + 'product/' + encodeURIComponent(p.id) + '.html'; document.head.appendChild(cn); }
+    if (!document.body.dataset.pid) {
     const ld = document.createElement('script'); ld.type = 'application/ld+json';
     ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: p.code + ' ' + p.name, description: p.summary, image: p.images, brand: { '@type': 'Brand', name: 'SMG' }, manufacturer: { '@type': 'Organization', name: D.company.nameEn } });
     document.head.appendChild(ld);
+    }
   };
 
   P.about = function () {
@@ -330,7 +335,7 @@
   }
 
   P.applications = function () {
-    $('#ind-list').innerHTML = D.industries.map((x) => { const ps = (x.products || []).map((id) => D.products.find((p) => p.id === id)).filter(Boolean); return `<article class="ind-row rv"><div class="ind-img"><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></div><div class="ind-body"><h3>${esc(x.title)}</h3><p>${esc(x.desc)}</p>${ps.length ? `<div class="ind-prods"><span>${t('추천 제품', 'Recommended products')}</span>${ps.map((p) => `<a href="${L('product.html?id=' + encodeURIComponent(p.id))}"><b>${esc(p.code)}</b>${esc(dispName(p))}</a>`).join('')}</div>` : ''}</div></article>`; }).join('');
+    $('#ind-list').innerHTML = D.industries.map((x) => { const ps = (x.products || []).map((id) => D.products.find((p) => p.id === id)).filter(Boolean); return `<article class="ind-row rv"><div class="ind-img"><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></div><div class="ind-body"><h3>${esc(x.title)}</h3><p>${esc(x.desc)}</p>${ps.length ? `<div class="ind-prods"><span>${t('추천 제품', 'Recommended products')}</span>${ps.map((p) => `<a href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><b>${esc(p.code)}</b>${esc(dispName(p))}</a>`).join('')}</div>` : ''}</div></article>`; }).join('');
     const dsec = $('#defense'); if (dsec && !(D.defense || []).length) { dsec.remove(); return; }
     $('#def-list').innerHTML = D.defense.map((x) => `<div class="ind rv" style="aspect-ratio:16/11"><img src="${esc(x.image)}" alt="" loading="lazy"><div><span style="color:#ff8a82;font-weight:700;font-size:12px;letter-spacing:.1em">${t('적용처', 'Application')}</span><b>${esc(x.title)}</b></div></div>`).join('');
   };

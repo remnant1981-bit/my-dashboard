@@ -61,7 +61,7 @@
         const k = inp.value.trim().toLowerCase();
         if (!k) { res.innerHTML = ''; return; }
         const hit = D.products.filter((p) => [p.code, p.name, p.nameKo, p.summary, p.applications, (p.certs || []).join(' '), (p.features || []).join(' '), catOf(p).name].join(' ').toLowerCase().includes(k));
-        res.innerHTML = hit.length ? hit.slice(0, 8).map((p) => `<a role="option" href="${L('product.html?id=' + encodeURIComponent(p.id))}"><img src="${esc(p.images[0])}" alt="" loading="lazy"><span><b>${esc(p.code)}</b> ${esc(pname(p))}<small>${esc(catOf(p).name || '')}</small></span></a>`).join('') + (hit.length > 8 ? `<a class="so-all" href="${L('products.html?q=' + encodeURIComponent(inp.value.trim()))}">${t(`검색 결과 ${hit.length}건 모두 보기 →`, `See all ${hit.length} results →`)}</a>` : '')
+        res.innerHTML = hit.length ? hit.slice(0, 8).map((p) => `<a role="option" href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><img src="${esc(p.images[0])}" alt="" loading="lazy"><span><b>${esc(p.code)}</b> ${esc(pname(p))}<small>${esc(catOf(p).name || '')}</small></span></a>`).join('') + (hit.length > 8 ? `<a class="so-all" href="${L('products.html?q=' + encodeURIComponent(inp.value.trim()))}">${t(`검색 결과 ${hit.length}건 모두 보기 →`, `See all ${hit.length} results →`)}</a>` : '')
           : `<div class="so-empty">${t('일치하는 제품이 없습니다.', 'No matching products.')} <a href="${L('contact.html')}">${t('찾는 제품을 문의해 주세요 →', 'Ask us →')}</a></div>`;
       };
       inp.oninput = draw;
@@ -96,7 +96,8 @@
       const lo = f(-273), hi = f(2300), pos = (x) => ((f(x) - lo) / (hi - lo)) * 100;
       const ticks = [-253, -100, 0, 100, 300, 1000, 2200];
       function drawCmp() {
-        const ids = $$('a.prod-card', grid).map((a) => new URLSearchParams(a.getAttribute('href').split('?')[1]).get('id'));
+        // 카드 링크에서 제품 id 추출: product/<id>.html (정적) 또는 product.html?id=<id> (구형)
+        const ids = $$('a.prod-card', grid).map((a) => { const h = a.getAttribute('href') || ''; const m = h.match(/product\/([^/?#]+)\.html/); return m ? decodeURIComponent(m[1]) : new URLSearchParams(h.split('?')[1]).get('id'); });
         const list = ids.map(prodBy).filter(Boolean);
         const Tn = T === '' ? null : Number(T);
         const ranged = list.filter((p) => typeof p.tmin === 'number'), none = list.filter((p) => typeof p.tmin !== 'number');
@@ -105,9 +106,9 @@
         cmp.innerHTML = `<div class="cmp-top"><label class="cmp-t"><span>${t('필요한 사용 온도', 'Required operating temperature')}</span><input type="number" inputmode="numeric" step="1" placeholder="${t('예: -196', 'e.g. -196')}" value="${esc(T)}"><em>℃</em></label><p class="cmp-note">${Tn === null ? t('온도를 입력하면 해당 온도에서 사용 가능한 제품만 강조됩니다.', 'Enter a temperature to highlight products rated for it.') : t(`${Tn}℃ 사용 가능 제품 <b>${match}</b>종`, `<b>${match}</b> products rated for ${Tn}℃`)}</p></div>
           <div class="cmp-chart" role="table" aria-label="${t('제품별 사용 온도 범위', 'Operating temperature range by product')}">
             <div class="cmp-axis" aria-hidden="true"><span class="cmp-lab"></span><div class="cmp-track">${ticks.map((x) => `<i style="left:${pos(x)}%"><b>${x}</b></i>`).join('')}${Tn !== null ? `<u class="cmp-mark" style="left:${pos(Tn)}%"><b>${Tn}℃</b></u>` : ''}</div><span class="cmp-act"></span></div>
-            ${ranged.sort((a, b) => a.tmin - b.tmin).map((p) => { const c = catOf(p).color || '#e1251b'; const q = inQ(p.id); return `<div class="cmp-row ${ok(p) ? '' : 'dim'}" role="row"><a class="cmp-lab" role="rowheader" href="${L('product.html?id=' + encodeURIComponent(p.id))}"><b>${esc(p.code)}</b><small>${esc(pname(p))}</small></a><div class="cmp-track" role="cell"><span class="cmp-bar" style="left:${pos(p.tmin)}%;width:${pos(p.tmax) - pos(p.tmin)}%;background:${esc(c)}"></span>${Tn !== null ? `<u class="cmp-mark" style="left:${pos(Tn)}%"></u>` : ''}<em class="cmp-val">${p.tmin} ~ ${p.tmax}℃</em></div><button type="button" class="cmp-act qadd ${q ? 'on' : ''}" data-id="${esc(p.id)}" aria-pressed="${q}" aria-label="${t('견적함 담기', 'Add to quote')}: ${esc(p.code)}">${q ? IC.check : IC.plus}</button></div>`; }).join('')}
+            ${ranged.sort((a, b) => a.tmin - b.tmin).map((p) => { const c = catOf(p).color || '#e1251b'; const q = inQ(p.id); return `<div class="cmp-row ${ok(p) ? '' : 'dim'}" role="row"><a class="cmp-lab" role="rowheader" href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><b>${esc(p.code)}</b><small>${esc(pname(p))}</small></a><div class="cmp-track" role="cell"><span class="cmp-bar" style="left:${pos(p.tmin)}%;width:${pos(p.tmax) - pos(p.tmin)}%;background:${esc(c)}"></span>${Tn !== null ? `<u class="cmp-mark" style="left:${pos(Tn)}%"></u>` : ''}<em class="cmp-val">${p.tmin} ~ ${p.tmax}℃</em></div><button type="button" class="cmp-act qadd ${q ? 'on' : ''}" data-id="${esc(p.id)}" aria-pressed="${q}" aria-label="${t('견적함 담기', 'Add to quote')}: ${esc(p.code)}">${q ? IC.check : IC.plus}</button></div>`; }).join('')}
           </div>
-          ${none.length ? `<p class="cmp-none">${t('온도 범위 비교 대상 아님', 'Not temperature-rated')}: ${none.map((p) => `<a href="${L('product.html?id=' + encodeURIComponent(p.id))}">${esc(p.code)}</a>`).join(', ')}</p>` : ''}
+          ${none.length ? `<p class="cmp-none">${t('온도 범위 비교 대상 아님', 'Not temperature-rated')}: ${none.map((p) => `<a href="${L('product/' + encodeURIComponent(p.id) + '.html')}">${esc(p.code)}</a>`).join(', ')}</p>` : ''}
           <p class="cmp-src">${t('※ 카탈로그 사양 기준 작동 온도 범위(로그 스케일). 모델·옵션에 따라 다를 수 있습니다.', '※ Operating ranges per catalogue specifications (log scale). May vary by model and option.')}</p>`;
         const inp = $('.cmp-t input', cmp);
         inp.oninput = () => { T = inp.value.replace(/[^0-9-]/g, ''); const pos0 = inp.selectionStart; drawCmp(); const n = $('.cmp-t input', cmp); n.focus(); try { n.setSelectionRange(pos0, pos0); } catch (e) {} };
@@ -128,7 +129,7 @@
 
     /* ---------- Product detail: quote / catalog page / print / share ---------- */
     if (pg === 'product') {
-      const p = prodBy(new URLSearchParams(location.search).get('id')) || D.products[0];
+      const p = prodBy(document.body.dataset.pid || new URLSearchParams(location.search).get('id')) || D.products[0];
       const acts = $('.pd-actions');
       const tools = document.createElement('div'); tools.className = 'pd-tools';
       const pdf = D.settings.catalogPdf + (p.catalogPage ? '#page=' + p.catalogPage : '');
@@ -170,7 +171,7 @@
         const a = getQ();
         hidden.value = a.map((x) => { const p = prodBy(x.id); return `- ${p.code} ${p.name} × ${x.qty}`; }).join('\n');
         if (!a.length) { box.innerHTML = `<div class="qbox-empty">${IC.quote}<span>${t('제품 상세 페이지에서 <b>견적함 담기</b>를 누르면 여러 제품을 한 번에 견적 요청할 수 있습니다.', 'Use <b>Add to quote</b> on product pages to request several products at once.')}</span><a href="${L('products.html')}">${t('제품 보기 →', 'Browse products →')}</a></div>`; return; }
-        box.innerHTML = `<div class="qbox-h"><b>${IC.quote} ${t('견적 요청 품목', 'Quote items')} <em>${a.length}</em></b><button type="button" class="qclear">${t('전체 비우기', 'Clear all')}</button></div><ul>${a.map((x) => { const p = prodBy(x.id); return `<li><img src="${esc(p.images[0])}" alt=""><a href="${L('product.html?id=' + encodeURIComponent(p.id))}"><b>${esc(p.code)}</b><small>${esc(pname(p))}</small></a><label>${t('수량', 'Qty')}<input type="number" min="1" max="99999" value="${x.qty}" data-id="${esc(p.id)}" inputmode="numeric"></label><button type="button" class="qrm" data-id="${esc(p.id)}" aria-label="${t('삭제', 'Remove')}">${IC.x}</button></li>`; }).join('')}</ul><p class="qbox-n">${t('품목과 수량이 문의 내용에 함께 전달됩니다.', 'Items and quantities are sent with your inquiry.')}</p>`;
+        box.innerHTML = `<div class="qbox-h"><b>${IC.quote} ${t('견적 요청 품목', 'Quote items')} <em>${a.length}</em></b><button type="button" class="qclear">${t('전체 비우기', 'Clear all')}</button></div><ul>${a.map((x) => { const p = prodBy(x.id); return `<li><img src="${esc(p.images[0])}" alt=""><a href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><b>${esc(p.code)}</b><small>${esc(pname(p))}</small></a><label>${t('수량', 'Qty')}<input type="number" min="1" max="99999" value="${x.qty}" data-id="${esc(p.id)}" inputmode="numeric"></label><button type="button" class="qrm" data-id="${esc(p.id)}" aria-label="${t('삭제', 'Remove')}">${IC.x}</button></li>`; }).join('')}</ul><p class="qbox-n">${t('품목과 수량이 문의 내용에 함께 전달됩니다.', 'Items and quantities are sent with your inquiry.')}</p>`;
         $$('.qrm', box).forEach((b) => (b.onclick = () => { setQ(getQ().filter((x) => x.id !== b.dataset.id)); }));
         $$('input[type=number]', box).forEach((i) => (i.onchange = () => { const a2 = getQ(); const it = a2.find((x) => x.id === i.dataset.id); if (it) it.qty = Math.max(1, Math.min(99999, parseInt(i.value, 10) || 1)); setQ(a2); }));
         const cl = $('.qclear', box); if (cl) cl.onclick = () => { if (confirm(t('견적함을 비울까요?', 'Clear the quote list?'))) setQ([]); };

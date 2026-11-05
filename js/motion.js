@@ -81,7 +81,7 @@
         const key = hit.map((q) => q.id).join();
         if (key !== last) {
           last = key;
-          prods.innerHTML = hit.length ? hit.map((q, i) => `<a href="${L('product.html?id=' + encodeURIComponent(q.id))}" style="--d:${sweep ? 0 : i * 25}ms"><b>${esc(q.code)}</b>${esc(EN ? q.name : q.nameKo)}</a>`).join('') : `<span class="spec-none">${t('해당 온도는 맞춤 설계로 검토해 드립니다 →', 'Custom design available for this temperature →')} <a href="${L('contact.html')}">${t('문의', 'Contact')}</a></span>`;
+          prods.innerHTML = hit.length ? hit.map((q, i) => `<a href="${L('product/' + encodeURIComponent(q.id) + '.html')}" style="--d:${sweep ? 0 : i * 25}ms"><b>${esc(q.code)}</b>${esc(EN ? q.name : q.nameKo)}</a>`).join('') : `<span class="spec-none">${t('해당 온도는 맞춤 설계로 검토해 드립니다 →', 'Custom design available for this temperature →')} <a href="${L('contact.html')}">${t('문의', 'Contact')}</a></span>`;
         }
         go.href = L('products.html?view=cmp&t=' + T);
       };
