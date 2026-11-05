@@ -29,7 +29,7 @@ window.SMG_DEFAULT_DATA = {
     "formBackupKey": "6ebfda78-a738-4831-bbe6-7628d3cc2c74",
     "notifyEmail": "sungsil@sungsil.com",
     "catalogPdf": "assets/SMG_Products_Catalogue_2026.pdf",
-    "gaId": "",
+    "gaId": "G-FV1FMG817S",
     "sheetEndpoint": "",
     "downloadGate": "optional",
     "videoUrl": "",
