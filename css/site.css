@@ -921,3 +921,24 @@ a.cmp-lab:hover b{color:var(--red)}
 .attach-note,.field.attach-note{display:flex!important;flex-direction:row!important;gap:10px;align-items:flex-start;padding:12px 14px;border:1px dashed var(--line,#e4e7ec);border-radius:12px;background:var(--bg2,#f7f8fa);font-size:14px;line-height:1.6;color:var(--muted,#667085)}
 .attach-note svg{flex:0 0 18px;width:18px;height:18px;margin-top:2px;color:var(--red,#e1251b)}
 .attach-note p{margin:0}.attach-note a{color:var(--red,#e1251b);font-weight:600;word-break:break-all}.attach-note b{color:var(--text,#1a1f29)}
+/* v9 notice detail page */
+a.news-row{color:inherit;text-decoration:none}
+a.news-row:hover b{color:var(--red)}
+a.news-row:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
+.nt-wrap{max-width:880px}
+.nt-art{border-top:2px solid var(--text);padding-top:22px}
+.nt-meta{display:flex;gap:12px;align-items:center;color:var(--muted);font-size:14px}
+.nt-meta time{font-family:var(--mono)}
+.nt-body{margin-top:22px;padding-bottom:40px;border-bottom:1px solid var(--line);white-space:pre-line;font-size:16.5px;line-height:1.85;color:var(--text);word-break:keep-all;overflow-wrap:anywhere}
+.nt-body a{color:var(--red);text-decoration:underline}
+.nt-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px}
+.nt-nav>a,.nt-nav>span{display:flex;flex-direction:column;gap:4px;padding:16px 18px;border:1px solid var(--line);border-radius:14px;color:inherit;text-decoration:none;min-width:0}
+.nt-nav>a:hover{border-color:var(--red)}
+.nt-nav>*>span{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.nt-nav b{font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt-nav time{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.nt-nav .none{opacity:.5}
+.nt-nav .nt-prev{text-align:right}
+.nt-actions{display:flex;gap:10px;justify-content:center;margin-top:36px;flex-wrap:wrap}
+.nt-empty{color:var(--muted);text-align:center;padding:40px 0}
+@media (max-width:640px){.nt-nav{grid-template-columns:1fr}.nt-nav .nt-prev{text-align:left}.nt-body{font-size:15.5px}}

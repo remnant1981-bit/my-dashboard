@@ -80,7 +80,7 @@
   /* ---------- Header / Footer ---------- */
   function renderChrome() {
     const page = document.body.dataset.page;
-    const cur = page === 'product' ? 'products.html' : (location.pathname.split('/').pop() || 'index.html');
+    const cur = page === 'product' ? 'products.html' : page === 'notice' ? 'support.html' : (location.pathname.split('/').pop() || 'index.html');
     const hdr = document.createElement('header');
     hdr.className = 'hdr' + (page === 'home' ? '' : ' light');
     hdr.innerHTML = `<div class="container">${logo()}
@@ -196,16 +196,12 @@
     });
   }
 
+  const sortNews = (items) => items.slice().sort((a, b) => (b.pinned - a.pinned) || String(b.date).localeCompare(a.date));
+  const noticeHref = (n) => L('notice.html?id=' + encodeURIComponent(n.id));
   function newsList(items) {
-    const sorted = items.slice().sort((a, b) => (b.pinned - a.pinned) || String(b.date).localeCompare(a.date));
-    return `<div class="news-list">${sorted.map((n) => `<div class="news-row" tabindex="0" role="button" aria-expanded="false"><time>${esc(n.date)}</time><span class="chip">${esc(n.category)}</span><b>${n.pinned ? '<span class="pin">●</span>' : ''}${esc(n.title)}</b>${I.arrow}</div><div class="news-body">${esc(n.body)}</div>`).join('')}</div>`;
+    return `<div class="news-list">${sortNews(items).map((n) => `<a class="news-row" href="${noticeHref(n)}"><time>${esc(n.date)}</time><span class="chip">${esc(n.category)}</span><b>${n.pinned ? '<span class="pin">●</span>' : ''}${esc(n.title)}</b>${I.arrow}</a>`).join('')}</div>`;
   }
-  function bindNews(root) {
-    $$('.news-row', root).forEach((r) => {
-      const t = () => { r.classList.toggle('open'); r.setAttribute('aria-expanded', r.classList.contains('open')); };
-      r.onclick = t; r.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } };
-    });
-  }
+  function bindNews() { /* 각 공지는 상세 페이지(notice.html?id=)로 이동 */ }
 
   /* ---------- Pages ---------- */
   const P = {};
@@ -346,6 +342,28 @@
     $('#faq-list').innerHTML = D.faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('');
   };
 
+  P.notice = function () {
+    const list = sortNews(D.news || []), id = params.get('id'), i = list.findIndex((x) => x.id === id), n = list[i];
+    $('#crumb').innerHTML = `<a href="${L('index.html')}">HOME</a>/<a href="${L('support.html')}">${t('고객지원', 'Support')}</a>/<a href="${L('support.html#news')}">${t('공지사항', 'News')}</a>`;
+    const back = `<a class="btn btn-dark" href="${L('support.html#news')}">${t('목록으로', 'Back to list')}</a>`;
+    if (!n) {
+      $('#nt-title').textContent = t('공지를 찾을 수 없습니다', 'Notice not found');
+      $('#notice').innerHTML = `<p class="nt-empty">${t('삭제되었거나 주소가 올바르지 않습니다.', 'It may have been removed or the link is incorrect.')}</p><div class="nt-actions">${back}</div>`;
+      return;
+    }
+    document.title = `${n.title} | ${t('공지사항', 'News')} | ${D.company.name}`;
+    const md = document.querySelector('meta[name=description]'); if (md) md.content = String(n.body || n.title).replace(/\s+/g, ' ').slice(0, 150);
+    $('#nt-title').textContent = n.title;
+    // 본문: 줄바꿈 유지, http(s) 주소는 링크로
+    const body = esc(n.body || '').replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+    const newer = list[i - 1], older = list[i + 1];
+    const navItem = (x, lab, cls) => x ? `<a class="${cls}" href="${noticeHref(x)}"><span>${lab}</span><b>${esc(x.title)}</b><time>${esc(x.date)}</time></a>` : `<span class="${cls} none"><span>${lab}</span><b>${t('없음', 'None')}</b></span>`;
+    $('#notice').innerHTML = `<article class="nt-art"><div class="nt-meta"><span class="chip">${esc(n.category)}</span><time datetime="${esc(n.date)}">${esc(n.date)}</time></div><div class="nt-body">${body}</div></article>
+      <nav class="nt-nav" aria-label="${t('이전·다음 공지', 'Previous and next')}">${navItem(newer, t('다음 글', 'Newer'), 'nt-next')}${navItem(older, t('이전 글', 'Older'), 'nt-prev')}</nav>
+      <div class="nt-actions">${back}<a class="btn btn-line" href="${L('contact.html')}">${t('문의하기', 'Contact us')}</a></div>`;
+    if (!document.querySelector('link[rel=canonical]')) { const cn = document.createElement('link'); cn.rel = 'canonical'; cn.href = 'https://www.sungsil.com/' + (EN ? 'en/' : '') + 'notice.html?id=' + encodeURIComponent(n.id); document.head.appendChild(cn); }
+  };
+
   P.contact = function () {
     const c = D.company;
     $('#contact-card').innerHTML = `<span class="eyebrow" style="color:#ff8a82">Contact</span><h3 style="margin-top:12px">${t('기술 상담부터 견적까지<br>전문 엔지니어가 답변드립니다', 'From technical consultation to quotation,<br>our engineers will respond')}</h3>
@@ -412,6 +430,13 @@
     if (D.settings.gaId && /^G-[A-Z0-9]+$/.test(D.settings.gaId)) {
       const s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + D.settings.gaId; document.head.appendChild(s);
       window.dataLayer = window.dataLayer || []; window.gtag = function () { dataLayer.push(arguments); }; gtag('js', new Date()); gtag('config', D.settings.gaId);
+    }
+    // 네이버 애널리틱스 (analytics.naver.com 사이트 ID)
+    const nwa = String(D.settings.naverWa || '').trim();
+    if (/^[a-z0-9]{6,32}$/i.test(nwa) && !preview) {
+      const s = document.createElement('script'); s.async = true; s.src = 'https://wcs.naver.net/wcslog.js';
+      s.onload = () => { try { window.wcs_add = window.wcs_add || {}; window.wcs_add.wa = nwa; if (window.wcs) { window.wcs.inflow && window.wcs.inflow('sungsil.com'); window.wcs_do(); } } catch (e) {} };
+      document.head.appendChild(s);
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

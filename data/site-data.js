@@ -30,6 +30,7 @@ window.SMG_DEFAULT_DATA = {
     "notifyEmail": "sungsil@sungsil.com",
     "catalogPdf": "assets/SMG_Products_Catalogue_2026.pdf",
     "gaId": "",
+    "naverWa": "",
     "showPopup": false,
     "popupTitle": "",
     "popupBody": "",

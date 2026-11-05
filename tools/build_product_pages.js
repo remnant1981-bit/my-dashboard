@@ -4,7 +4,7 @@
  * 실행: node tools/build_product_pages.js      (저장소 루트에서)
  * 순서: (국문 HTML 수정 시) python3 tools/build_en_pages.py . → (새 제품·대표사진 변경 시) python3 tools/build_og_images.py → node tools/build_product_pages.js
  *
- * 생성물: product/<id>.html (국문), en/product/<id>.html (영문), sitemap.xml 제품 항목
+ * 생성물: product/<id>.html (국문), en/product/<id>.html (영문), sitemap.xml 제품·공지 항목
  * - 제목·설명·OG 이미지·canonical·hreflang·구조화데이터·본문 요약이 HTML에 직접 들어감
  * - 방문자 화면은 기존처럼 js/app.js가 최신 데이터로 다시 그림 (body data-pid 사용)
  * - 관리자 화면에서 제품을 추가·수정한 뒤에는 이 스크립트를 다시 실행해야 검색 정보가 갱신됨
@@ -79,9 +79,13 @@ for (const L of LANGS) {
 
 // sitemap: replace product entries
 const today = new Date().toISOString().slice(0, 10);
-let sm = read('sitemap.xml').replace(/\s*<url><loc>[^<]*(\/product\/|product\.html\?id=)[^<]*<\/loc>[\s\S]*?<\/url>/g, '');
+let sm = read('sitemap.xml').replace(/\s*<url><loc>[^<]*(\/product\/|product\.html\?id=|notice\.html\?id=)[^<]*<\/loc>[\s\S]*?<\/url>/g, '');
 const alt = (id) => `<xhtml:link rel="alternate" hreflang="ko" href="${SITE}product/${id}.html"/><xhtml:link rel="alternate" hreflang="en" href="${SITE}en/product/${id}.html"/>`;
 const rows = KO.products.map((p) => `  <url><loc>${SITE}product/${p.id}.html</loc><lastmod>${today}</lastmod>${alt(p.id)}</url>\n  <url><loc>${SITE}en/product/${p.id}.html</loc><lastmod>${today}</lastmod>${alt(p.id)}</url>`).join('\n');
-sm = sm.replace('</urlset>', rows + '\n</urlset>');
+// 공지 상세 (notice.html?id=) — 국문 id 기준, 영문 데이터에 같은 id가 있으면 영문 주소도 추가
+const enNews = new Set((EN.news || []).map((n) => n.id));
+const nAlt = (id) => `<xhtml:link rel="alternate" hreflang="ko" href="${SITE}notice.html?id=${id}"/>` + (enNews.has(id) ? `<xhtml:link rel="alternate" hreflang="en" href="${SITE}en/notice.html?id=${id}"/>` : '');
+const newsRows = (KO.news || []).map((n) => `  <url><loc>${SITE}notice.html?id=${encodeURIComponent(n.id)}</loc><lastmod>${/^\d{4}-\d{2}-\d{2}$/.test(n.date) ? n.date : today}</lastmod>${nAlt(n.id)}</url>` + (enNews.has(n.id) ? `\n  <url><loc>${SITE}en/notice.html?id=${encodeURIComponent(n.id)}</loc><lastmod>${/^\d{4}-\d{2}-\d{2}$/.test(n.date) ? n.date : today}</lastmod>${nAlt(n.id)}</url>` : '')).join('\n');
+sm = sm.replace('</urlset>', rows + (newsRows ? '\n' + newsRows : '') + '\n</urlset>');
 write('sitemap.xml', sm);
 console.log(`product pages: ${n}, sitemap urls: ${(sm.match(/<url>/g) || []).length}`);
