@@ -24,6 +24,7 @@ window.SMG_DEFAULT_DATA = {
     "mapQuery": "경기도 시흥시 시화벤처로 305"
   },
   "settings": {
+    "formPrimary": "web3forms",
     "formEndpoint": "https://formspree.io/f/mnppwlzv",
     "formBackupKey": "6ebfda78-a738-4831-bbe6-7628d3cc2c74",
     "notifyEmail": "sungsil@sungsil.com",
