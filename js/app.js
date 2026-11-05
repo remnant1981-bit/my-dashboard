@@ -33,10 +33,13 @@
   }
   async function sendInquiry(subject, data) {
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
-    // 점검용: contact.html?backuptest=1 이면 1순위를 건너뛰고 예비(Web3Forms)로만 전송
-    const backupTest = params.get('backuptest') === '1';
-    if (ep && !backupTest && await postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data))) return 'primary';
-    if (key && await postJSON('https://api.web3forms.com/submit', Object.assign({}, data, { access_key: key, subject, from_name: EN ? 'SMG Website' : 'SMG 홈페이지', replyto: data.email || undefined }))) return 'backup';
+    const viaEndpoint = () => ep && postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data));
+    const viaWeb3 = () => key && postJSON('https://api.web3forms.com/submit', Object.assign({}, data, { access_key: key, subject, from_name: EN ? 'SMG Website' : 'SMG 홈페이지', replyto: data.email || undefined }));
+    // 전송 순서: settings.formPrimary = 'web3forms'(기본: Web3Forms → Formspree) | 'endpoint'(Formspree → Web3Forms)
+    const order = st.formPrimary === 'endpoint' ? [['endpoint', viaEndpoint], ['web3forms', viaWeb3]] : [['web3forms', viaWeb3], ['endpoint', viaEndpoint]];
+    // 점검용: contact.html?backuptest=1 이면 1순위를 건너뛰고 2순위로만 전송
+    if (params.get('backuptest') === '1') order.shift();
+    for (const [name, fn] of order) { if (await fn()) return name; }
     return '';
   }
   window.SMG = { data: D, DRAFT_KEY, INQ_KEY, safeGet, safeSet, EN, L, sendInquiry };
