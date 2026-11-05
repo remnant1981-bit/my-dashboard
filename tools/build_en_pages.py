@@ -53,6 +53,7 @@ META = {
  'product': ('Product details | SMG Co., Ltd.', 'SMG product specifications, installation and certifications.'),
  'applications': ('Applications | SMG Co., Ltd.', 'Power generation, shipbuilding LNG/LH₂, petrochemical, semiconductor & display, defense and aerospace applications.'),
  'support': ('Support | SMG Co., Ltd.', 'News, catalog downloads and FAQ.'),
+ 'notice': ('News | SMG Co., Ltd.', 'News and announcements from SMG Co., Ltd.'),
  'contact': ('Contact | SMG Co., Ltd.', 'Online inquiry for quotations, technical consultation and samples.'),
  'privacy': ('Privacy Policy | SMG Co., Ltd.', 'SMG Co., Ltd. privacy policy.'),
  '404': ('Page not found | SMG Co., Ltd.', 'Page not found.'),
@@ -65,10 +66,11 @@ PRIVACY_EN = '''<main id="main"><section class="sec"><div class="container prose
 <h3 style="margin-top:28px">4. Disclosure to third parties</h3><p>We do not provide personal information to third parties except with your consent or as required by law.</p>
 <h3 style="margin-top:28px">4-1. Outsourcing</h3><p>To forward website inquiries to our staff by email, we may use external form delivery and chat services (Web3Forms, with Formspree as backup; optionally KakaoTalk Channel, Channel Talk). The service provider does not use personal information for any other purpose.</p>
 <h3 style="margin-top:28px">5. Your rights</h3><p>You may request access, correction, deletion or suspension of processing of your personal information at any time via the contact below.</p>
+<h3 style="margin-top:28px">5-1. Cookies and visitor statistics</h3><p>We may use web analytics tools such as Google Analytics and Naver Analytics to understand how our website is used. These tools use cookies to collect information that does not directly identify you, such as visit time, pages viewed, browser and device type, and approximate location. You can refuse cookies in your browser settings without any restriction on using this website.</p>
 <h3 style="margin-top:28px">6. Contact</h3><p>Email: <span data-co="email"></span> · Phone: <span data-co="tel"></span></p>
 <p style="margin-top:36px;font-size:14px">Effective date: November 2, 2026</p></div></section></main>'''
 SITE = 'https://www.sungsil.com/'
-PAGES = ['index', 'about', 'products', 'product', 'applications', 'support', 'contact', 'privacy', '404']
+PAGES = ['index', 'about', 'products', 'product', 'applications', 'support', 'notice', 'contact', 'privacy', '404']
 for name in PAGES:
     s = open(f'{root}/{name}.html', encoding='utf-8').read()
     s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
@@ -96,7 +98,7 @@ for name in PAGES:
     head, body = s.split('<body', 1)
     body = re.sub(r'(href)="([^"]*)"', fix, body)
     s = head + '<body' + body
-    canon = '' if name in ('product', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
+    canon = '' if name in ('product', 'notice', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
     hreflang = (f'<base href="../">\n<link rel="alternate" hreflang="ko" href="{SITE}{page_file}">\n<link rel="alternate" hreflang="en" href="{SITE}en/{page_file}">\n<link rel="alternate" hreflang="x-default" href="{SITE}{page_file}">\n' + canon)
     s = s.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + hreflang, 1)
     s = s.replace('<script src="data/site-data.js"></script>', '<script src="data/site-data.js"></script>\n<script src="data/site-data-en.js"></script>')
@@ -110,7 +112,7 @@ for name in PAGES:
 for name in PAGES:
     p = f'{root}/{name}.html'; s = open(p, encoding='utf-8').read()
     s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
-    canon = '' if name in ('product', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
+    canon = '' if name in ('product', 'notice', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
     s = s.replace('<meta charset="UTF-8">', f'<meta charset="UTF-8">\n<link rel="alternate" hreflang="ko" href="{SITE}{name}.html">\n<link rel="alternate" hreflang="en" href="{SITE}en/{name}.html">\n<link rel="alternate" hreflang="x-default" href="{SITE}{name}.html">' + canon, 1)
     open(p, 'w', encoding='utf-8').write(s)
 # home page canonical = site root (matches sitemap.xml)
