@@ -75,7 +75,8 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 | 네이버 서치어드바이저 | 네이버 검색 등록 | 담당자 네이버 계정 | 소유확인 태그 반영 완료 → [소유확인] → sitemap 제출 |
 | 관리자 화면 | 콘텐츠 수정 | 비밀번호 1개 | 저장소에는 해시만 저장. 변경은 [설정]에서 |
 | 구글 시트 + Apps Script | 문의 접수 게시판 | 회사 구글 계정 | 조회 비밀키(TOKEN)는 별도 보관. 설정: `docs/inquiry-board-setup.md` |
-| Google Analytics / 네이버 애널리틱스 | 방문자 통계 | 회사 구글·네이버 계정 | ID를 관리자 [설정] → 기타에 입력 |
+| Google Analytics 4 | 방문자 통계 | 담당자 구글 계정 (계정 Hoonnsol) | 속성 `smg-338ba`(ID 493032076), 스트림 `SMG`, 측정 ID `G-FV1FMG817S` 연결(2026-11-05). 다른 속성 `project-aee9b`·`test-127ba`는 사용 안 함 |
+| 네이버 애널리틱스 | 방문자 통계(네이버 유입) | 담당자 네이버 계정 | 사이트 ID를 관리자 [설정] → 기타에 입력 (미연결) |
 
 ※ Web3Forms Access Key·Formspree 주소는 사이트 코드에 공개적으로 들어가는 값(발송만 가능, 수신 주소 고정)이라 노출돼도 무방함.
 
