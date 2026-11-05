@@ -24,7 +24,7 @@ window.SMG_DEFAULT_DATA = {
     "mapQuery": "경기도 시흥시 시화벤처로 305"
   },
   "settings": {
-    "formEndpoint": "",
+    "formEndpoint": "https://formsubmit.co/ajax/sungsil@sungsil.com",
     "notifyEmail": "sungsil@sungsil.com",
     "catalogPdf": "assets/SMG_Products_Catalogue_2026.pdf",
     "gaId": "",
