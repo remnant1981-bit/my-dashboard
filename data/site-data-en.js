@@ -1562,6 +1562,7 @@ window.SMG_DATA_EN = {
       "a": "Yes. As a designated Promising Export SME we supply customers worldwide, and we are an authorized Honeywell distributor in APAC."
     }
   ],
+  "cases": [],
   "inquiryTypes": [
     "Request a quote",
     "Technical inquiry",

@@ -66,7 +66,7 @@
   const MENU = [
     ['grp', '개요'], ['dash', '대시보드'], ['inq', '문의 관리'],
     ['grp', '콘텐츠'], ['products', '제품 관리'], ['categories', '제품 카테고리'], ['news', '공지사항'], ['downloads', '자료실'], ['faq', 'FAQ'],
-    ['grp', '사이트 정보'], ['home', '메인 화면'], ['company', '회사 정보'], ['about', '회사소개 · 인증'], ['history', '연혁'], ['apps', '적용분야 · 파트너'],
+    ['grp', '사이트 정보'], ['home', '메인 화면'], ['company', '회사 정보'], ['about', '회사소개 · 인증'], ['history', '연혁'], ['apps', '적용분야 · 파트너'], ['cases', '납품 실적·사례 (비공개)'],
     ['grp', '시스템'], ['settings', '설정'], ['publish', '게시 · 백업']
   ];
   let cur = 'dash';
@@ -271,6 +271,27 @@
         const csv = [head, ...all.map((q) => cols.map((c) => q[c] || ''))].map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
         download('﻿' + csv, `SMG_문의목록_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8');
       };
+      // ---- 구글 시트 접수 게시판 (모든 기기·모든 방문자 문의) ----
+      const sheetUrl = String((PUB.ko.settings || {}).sheetEndpoint || (DATA.ko.settings || {}).sheetEndpoint || '').trim();
+      const sc = document.createElement('div'); sc.className = 'card'; el.prepend(sc);
+      if (!sheetUrl) { sc.innerHTML = `<h2>문의 접수 게시판 (구글 시트)</h2><div class="desc">아직 연결되지 않았습니다. 연결하면 모든 기기에서 접수된 문의를 여기서 볼 수 있습니다. 설정 방법: <code>docs/inquiry-board-setup.md</code> → [설정] → 문의 접수 게시판</div>`; return; }
+      const TOK = 'smg_sheet_token';
+      sc.innerHTML = `<div class="card-head"><div><h2>문의 접수 게시판 (구글 시트)</h2><div class="desc" style="margin:0" data-sinfo>모든 기기에서 접수된 문의 · 조회 비밀키는 이 브라우저에만 저장</div></div><div class="toolbar"><input type="password" data-stok placeholder="조회 비밀키" value="${esc(ls.get(TOK) || '')}" style="width:160px"><button class="b b-pri" data-sload>불러오기</button><a class="b b-line" data-sopen target="_blank" rel="noopener" hidden>시트 열기</a></div></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>접수일시</th><th>유형</th><th>회사 / 담당자</th><th>연락처</th><th>내용</th><th style="width:120px">상태</th></tr></thead><tbody data-sbody><tr><td colspan="6" style="color:var(--muted)">[불러오기]를 누르세요</td></tr></tbody></table></div>`;
+      const sbody = $('[data-sbody]', sc);
+      const api = (params) => fetch(sheetUrl + '?' + new URLSearchParams(Object.assign({ token: $('[data-stok]', sc).value.trim() }, params))).then((r) => r.json());
+      const load = async () => {
+        const tk = $('[data-stok]', sc).value.trim(); if (!tk) return toast('조회 비밀키를 입력하세요'); ls.set(TOK, tk);
+        sbody.innerHTML = '<tr><td colspan="6">불러오는 중...</td></tr>';
+        try {
+          const j = await api({ action: 'list' }); if (!j.ok) throw new Error(j.error || '조회 실패');
+          if (j.sheetUrl) { const o = $('[data-sopen]', sc); o.href = j.sheetUrl; o.hidden = false; }
+          $('[data-sinfo]', sc).textContent = `총 ${j.rows.length}건 · 신규 ${j.rows.filter((r) => (r.status || '신규') === '신규').length}건`;
+          sbody.innerHTML = j.rows.length ? j.rows.map((r) => `<tr><td>${esc(String(r.time || '').replace('T', ' ').slice(0, 16))}</td><td>${r.source === 'chat' ? '<span class="badge amber">채팅</span> ' : r.source === 'download' ? '<span class="badge">자료</span> ' : ''}${esc(r.type || '')}</td><td><b>${esc(r.company || '')}</b><br>${esc(r.name || '')}</td><td>${esc(r.phone || '')}<br>${r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ''}</td><td style="max-width:360px;white-space:pre-line">${esc(String(r.message || '') + (r.items ? '\n' + r.items : '')).slice(0, 400)}</td><td><select data-srow="${esc(r.row)}">${['신규', '처리중', '완료'].map((x) => `<option ${x === (r.status || '신규') ? 'selected' : ''}>${x}</option>`).join('')}</select></td></tr>`).join('') : '<tr><td colspan="6">접수된 문의가 없습니다</td></tr>';
+        } catch (err) { sbody.innerHTML = `<tr><td colspan="6" style="color:#d92d20">불러오기 실패: ${esc(err.message)} (비밀키·웹앱 배포 설정 확인)</td></tr>`; }
+      };
+      $('[data-sload]', sc).onclick = load;
+      sbody.onchange = async (e) => { const t = e.target; if (!t.dataset.srow) return; try { const j = await api({ action: 'status', row: t.dataset.srow, status: t.value }); toast(j.ok ? '상태 변경됨' : '변경 실패: ' + (j.error || '')); } catch (err) { toast('변경 실패'); } };
+      if (ls.get(TOK)) load();
     },
 
     products(el) {
@@ -318,8 +339,8 @@
     news(el) {
       collection(el, {
         title: '공지사항', desc: '고정(📌) 글은 항상 맨 위에 표시. 나머지는 날짜 최신순 자동 정렬.', item: '공지', get: () => D.news, sortable: false,
-        cols: [['date', '날짜'], ['category', '분류', (o) => `<span class="badge red">${esc(o.category)}</span>`], ['title', '제목', (o) => (o.pinned ? '📌 ' : '') + esc(o.title)]],
-        fields: [{ k: 'title', label: '제목', full: true }, { k: 'date', label: '날짜', type: 'date' }, { k: 'category', label: '분류', hint: '예: 공지, 인증, 자료, 전시회' }, { k: 'body', label: '내용', type: 'textarea', full: true, rows: 10 }, { k: 'pinned', label: '상단 고정', type: 'check' }],
+        cols: [['date', '날짜'], ['category', '분류', (o) => `<span class="badge red">${esc(o.category)}</span>`], ['title', '제목', (o) => (o.pinned ? '📌 ' : '') + (o.popup && (!o.popupUntil || o.popupUntil >= new Date().toISOString().slice(0, 10)) ? '🔔 ' : '') + esc(o.title)]],
+        fields: [{ k: 'title', label: '제목', full: true }, { k: 'date', label: '날짜', type: 'date' }, { k: 'category', label: '분류', hint: '예: 공지, 인증, 자료, 전시회' }, { k: 'body', label: '내용', type: 'textarea', full: true, rows: 10 }, { k: 'pinned', label: '상단 고정', type: 'check' }, { k: 'popup', label: '홈페이지 접속 시 팝업으로 띄우기', type: 'check', hint: '여러 건이면 최신 공지 1건이 뜨고 나머지는 "더 보기"로 연결. 방문자는 "오늘 하루 보지 않기" 가능' }, { k: 'popupUntil', label: '팝업 종료일 (비우면 계속 표시)', type: 'date' }],
         blank: () => ({ id: 'n' + Date.now(), date: new Date().toISOString().slice(0, 10), category: '공지', title: '', body: '', pinned: false }),
         validate: (o) => { if (!o.title) return '제목을 입력하세요'; }
       });
@@ -340,6 +361,21 @@
         fields: [{ k: 'q', label: '질문', full: true }, { k: 'a', label: '답변', type: 'textarea', full: true, rows: 6 }], blank: () => ({ q: '', a: '' }), validate: (o) => { if (!o.q) return '질문을 입력하세요'; } });
     },
 
+    cases(el) {
+      if (!D.cases) D.cases = [];
+      el.insertAdjacentHTML('beforeend', `<div class="note ${D.settings && D.settings.casesEnabled ? '' : 'warn'}">${D.settings && D.settings.casesEnabled ? '사례 페이지가 <b>공개</b> 상태입니다.' : '<b>비공개 상태</b> — 방문자에게 보이지 않습니다. [미리보기] → 주소창 끝에 <code>cases.html</code> 로 확인. 공개는 [설정] → 납품 실적·사례 페이지.'} 고객사명은 "고객사명 공개"를 체크한 경우에만 표시됩니다.</div>`);
+      const box = document.createElement('div'); el.appendChild(box);
+      collection(box, {
+        title: '납품 실적·사례', desc: '산업별 적용 사례. 사진은 첫 번째가 대표', item: '사례', get: () => D.cases,
+        cols: [['year', '연도'], ['industry', '분야'], ['title', '제목', (o) => (o.hidden ? '🙈 ' : '') + esc(o.title)], ['client', '고객사', (o) => esc(o.client || '-') + (o.client && !o.clientPublic ? ' (비공개)' : '')]],
+        fields: [{ k: 'title', label: '제목', full: true, ph: '예: 174K LNG선 화물펌프 전원 피드스루 공급' }, { k: 'industry', label: '분야', ph: '예: 조선(LNG/LH₂)' }, { k: 'year', label: '연도', ph: '예: 2024' },
+          { k: 'client', label: '고객사명' }, { k: 'clientPublic', label: '고객사명 공개 (체크 시 사이트에 표시)', type: 'check' },
+          { k: 'summary', label: '요약 (목록에 표시)', type: 'textarea', full: true, rows: 3 }, { k: 'body', label: '상세 내용', type: 'textarea', full: true, rows: 8 },
+          { k: 'products', label: '적용 제품 ID (제품 관리의 ID)', type: 'list', full: true, hint: '예: gb, mb' }, { k: 'images', label: '사진', type: 'images', full: true }, { k: 'hidden', label: '이 사례 숨기기', type: 'check' }],
+        blank: () => ({ id: 'c' + Date.now(), title: '', industry: '', year: String(new Date().getFullYear()), client: '', clientPublic: false, summary: '', body: '', products: [], images: [], hidden: false }),
+        validate: (o) => { if (!o.title) return '제목을 입력하세요'; }
+      });
+    },
     history(el) {
       collection(el, { title: '연혁', desc: '연도 내림차순으로 정렬하세요 (▲▼)', item: '연혁', get: () => D.history, cols: [['year', '연도', (o) => `<b>${esc(o.year)}</b>`], ['items', '내용', (o) => o.items.map(esc).join('<br>')]],
         fields: [{ k: 'year', label: '연도' }, { k: 'items', label: '내용', type: 'list', full: true }], blank: () => ({ year: String(new Date().getFullYear()), items: [] }), validate: (o) => { if (!o.year) return '연도를 입력하세요'; } });
@@ -384,7 +420,7 @@
       formCard(el, '회사소개 / CEO 인사말', '', [{ k: 'title', label: '타이틀', full: true }, { k: 'body', label: '본문 문단', type: 'list', full: true, hint: '문단별로 입력' }, { k: 'image', label: '대표 이미지', type: 'image', full: true }], a);
       const v = document.createElement('div'); const ce = document.createElement('div'); el.append(v, ce);
       collection(v, { title: '핵심 가치 (4개 권장)', item: '가치', get: () => a.values, cols: [['title', '제목'], ['desc', '설명']], fields: [{ k: 'title', label: '제목' }, { k: 'desc', label: '설명' }], blank: () => ({ title: '', desc: '' }) });
-      collection(ce, { title: '인증 현황', item: '인증', get: () => D.certifications, cols: [['name', '인증명', (o) => `<b>${esc(o.name)}</b>`], ['desc', '설명']], fields: [{ k: 'name', label: '인증명' }, { k: 'desc', label: '설명' }], blank: () => ({ name: '', desc: '' }) });
+      collection(ce, { title: '인증 현황', item: '인증', get: () => D.certifications, cols: [['name', '인증명', (o) => `<b>${esc(o.name)}</b>`], ['desc', '설명'], ['validUntil', '유효기간', (o) => esc(o.validUntil || '-')], ['file', '원본', (o) => (o.file ? '✅' : '-')]], fields: [{ k: 'name', label: '인증명' }, { k: 'desc', label: '설명' }, { k: 'certNo', label: '인증번호 (선택)' }, { k: 'validUntil', label: '유효기간 (선택)', type: 'date', hint: '지나면 "갱신 확인 중"으로 표시' }, { k: 'file', label: '인증서 원본 (이미지·PDF, 선택)', type: 'file', full: true }], blank: () => ({ name: '', desc: '', certNo: '', validUntil: '', file: '' }) });
     },
 
     settings(el) {
@@ -396,6 +432,20 @@
         { k: 'formEndpoint', label: 'Formspree 폼 주소 (무료 월 50건)', full: true, ph: 'https://formspree.io/f/xxxxxxx', hint: 'Formspree·Getform 등 JSON POST를 받는 서비스 주소. 비워두면 사용 안 함.' },
         { k: 'notifyEmail', label: '문의 수신 이메일 (메일 앱 방식)', full: true }], s);
       if (!s.chat) s.chat = { enabled: true, kakaoChannel: '', channelTalkKey: '', hoursStart: '08:30', hoursEnd: '17:30', hoursEndFri: '16:30', greeting: '' };
+      formCard(el, '문의 접수 게시판 (구글 시트)', '모든 문의(견적 폼·채팅·자료 신청)를 구글 시트에도 자동 저장 → [문의 관리]에서 목록 확인. 설정 방법: docs/inquiry-board-setup.md', [
+        { k: 'sheetEndpoint', label: '구글 Apps Script 웹앱 주소', full: true, ph: 'https://script.google.com/macros/s/XXXX/exec', hint: '비워두면 시트 저장 안 함 (메일 수신은 그대로)' }
+      ], s);
+      formCard(el, '자료 다운로드 연락처', '자료실·카탈로그 다운로드 시 회사·이메일을 받는 기능 (영업 리드)', [
+        { k: 'downloadGate', label: '사용 방식', type: 'select', opts: () => [['off', '끄기 (바로 다운로드)'], ['optional', '선택 (입력 또는 건너뛰기)'], ['required', '필수 (입력해야 다운로드)']], hint: '입력 내용은 문의 메일·시트로 "자료 다운로드" 유형으로 접수됨 (Web3Forms 건수에 포함)' }
+      ], s);
+      formCard(el, '회사·공장 소개 영상', '유튜브에 영상을 올린 뒤 주소를 입력 (비공개 말고 "일부 공개" 또는 "공개")', [
+        { k: 'videoUrl', label: '유튜브 주소', full: true, ph: 'https://www.youtube.com/watch?v=XXXXXXXXXXX' },
+        { k: 'videoTitle', label: '영상 제목 (국문)', full: true, ph: '예: SMG 시흥 공장 소개' }, { k: 'videoTitleEn', label: '영상 제목 (영문)', full: true, ph: 'e.g. SMG Siheung factory tour' },
+        { k: 'videoOnHome', label: '메인 화면에도 표시 (기본: 회사소개 페이지)', type: 'check', full: true }
+      ], s);
+      formCard(el, '납품 실적·사례 페이지', '왼쪽 메뉴 [납품 실적·사례]에서 작성. 공개 전에는 [미리보기]에서만 보임', [
+        { k: 'casesEnabled', label: '사이트에 공개 (메뉴 표시)', type: 'check', full: true, hint: '체크하고 [게시하기] 해야 방문자에게 보임' }
+      ], s);
       formCard(el, '채팅 상담', '화면 오른쪽 아래 채팅 버튼. 기본 상담봇(제품 찾기·FAQ·대화형 문의 접수)은 바로 동작하며, 아래 ID/키를 입력하면 실시간 상담이 함께 연결됩니다.', [
         { k: 'enabled', label: '채팅 상담 사용', type: 'check', full: true },
         { k: 'kakaoChannel', label: '카카오톡 채널 ID', ph: '_xxxxxx', hint: '카카오톡 채널 관리자센터 → 채널 URL(pf.kakao.com/_xxxx)의 _xxxx 부분. 입력 시 [카카오톡 상담] 버튼 표시' },
