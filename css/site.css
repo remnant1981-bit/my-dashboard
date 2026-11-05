@@ -801,8 +801,9 @@ a.cmp-lab:hover b{color:var(--red)}
 /* section reveal accents */
 .js-motion .eyebrow.rv-t::before{width:0;transition:width .7s .1s cubic-bezier(.2,.8,.2,1)}
 .js-motion .eyebrow.rv-t.in::before{width:28px}
-.js-motion .sec-title.rv-t{clip-path:inset(0 0 100% 0);transform:translateY(14px);transition:clip-path .9s cubic-bezier(.2,.8,.2,1),transform .9s cubic-bezier(.2,.8,.2,1)}
-.js-motion .sec-title.rv-t.in{clip-path:inset(-10% -5% -10% -5%);transform:none}
+/* opacity 기반: clip-path로 숨기면 Chrome IntersectionObserver가 교차 0으로 판단해 제목이 영영 안 나타남 */
+.js-motion .sec-title.rv-t{opacity:0;transform:translateY(18px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .9s cubic-bezier(.2,.8,.2,1)}
+.js-motion .sec-title.rv-t.in{opacity:1;transform:none}
 /* parallax images */
 .split .media img{will-change:transform;transform:scale(1.12)}
 /* timeline fill */
@@ -830,7 +831,7 @@ a.cmp-lab:hover b{color:var(--red)}
   .hero h1 .hl>span,.h-in{animation:none;transform:none;opacity:1}
   .hero-bg.on{animation:none}
   .hero::after,.scroll-prog{display:none}
-  .js-motion .sec-title.rv-t{clip-path:none;transform:none}
+  .js-motion .sec-title.rv-t{opacity:1;transform:none}
   .js-motion .eyebrow.rv-t::before{width:28px}
   .spec-prods a{animation:none}
 }

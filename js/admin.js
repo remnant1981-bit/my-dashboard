@@ -381,12 +381,12 @@
       formCard(el, '문의 폼 수신', '방문자 문의를 메일로 받기 위한 설정', [
         { k: 'formEndpoint', label: '폼 수신 주소 (Endpoint URL)', full: true, ph: 'https://formspree.io/f/xxxxxxx', hint: 'Formspree·Getform·Web3Forms 등 JSON POST를 받는 서비스 주소. 비워두면 방문자 메일 앱으로 발송.' },
         { k: 'notifyEmail', label: '문의 수신 이메일 (메일 앱 방식)', full: true }], s);
-      if (!s.chat) s.chat = { enabled: true, kakaoChannel: '', channelTalkKey: '', hoursStart: '09:00', hoursEnd: '18:00', greeting: '' };
+      if (!s.chat) s.chat = { enabled: true, kakaoChannel: '', channelTalkKey: '', hoursStart: '08:30', hoursEnd: '17:30', hoursEndFri: '16:30', greeting: '' };
       formCard(el, '채팅 상담', '화면 오른쪽 아래 채팅 버튼. 기본 상담봇(제품 찾기·FAQ·대화형 문의 접수)은 바로 동작하며, 아래 ID/키를 입력하면 실시간 상담이 함께 연결됩니다.', [
         { k: 'enabled', label: '채팅 상담 사용', type: 'check', full: true },
         { k: 'kakaoChannel', label: '카카오톡 채널 ID', ph: '_xxxxxx', hint: '카카오톡 채널 관리자센터 → 채널 URL(pf.kakao.com/_xxxx)의 _xxxx 부분. 입력 시 [카카오톡 상담] 버튼 표시' },
         { k: 'channelTalkKey', label: '채널톡 플러그인 키', ph: 'xxxxxxxx-xxxx-…', hint: '채널톡 관리자 → 채널 설정 → 플러그인 키. 입력 시 [상담원 실시간 채팅] 연결' },
-        { k: 'hoursStart', label: '상담 시작 시각 (KST)', ph: '09:00' }, { k: 'hoursEnd', label: '상담 종료 시각 (KST)', ph: '18:00' },
+        { k: 'hoursStart', label: '상담 시작 시각 (KST)', ph: '08:30' }, { k: 'hoursEnd', label: '상담 종료 시각 월–목 (KST)', ph: '17:30' }, { k: 'hoursEndFri', label: '상담 종료 시각 금요일 (KST)', ph: '16:30' },
         { k: 'greeting', label: '첫 인사말 (비우면 기본 문구)', type: 'textarea', full: true, rows: 2 }], s.chat);
       formCard(el, '메인 팝업', '홈페이지 첫 화면 공지 팝업 ("오늘 하루 보지 않기" 지원)', [{ k: 'showPopup', label: '팝업 사용', type: 'check', full: true }, { k: 'popupTitle', label: '팝업 제목', full: true }, { k: 'popupBody', label: '팝업 내용', type: 'textarea', full: true }], s);
       formCard(el, '기타', '', [{ k: 'catalogPdf', label: '대표 카탈로그 PDF 경로', full: true }, { k: 'gaId', label: 'Google Analytics 측정 ID', ph: 'G-XXXXXXXXXX', full: true }], s);

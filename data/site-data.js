@@ -20,7 +20,7 @@ window.SMG_DEFAULT_DATA = {
     "fax": "031-504-0200",
     "email": "sungsil@sungsil.com",
     "website": "www.sungsil.com",
-    "hours": "평일 09:00 – 18:00 (주말·공휴일 휴무)",
+    "hours": "월–목 08:30 – 17:30 · 금 08:30 – 16:30 (주말·공휴일 휴무)",
     "mapQuery": "경기도 시흥시 시화벤처로 305"
   },
   "settings": {
@@ -35,8 +35,9 @@ window.SMG_DEFAULT_DATA = {
       "enabled": true,
       "kakaoChannel": "",
       "channelTalkKey": "",
-      "hoursStart": "09:00",
-      "hoursEnd": "18:00",
+      "hoursStart": "08:30",
+      "hoursEnd": "17:30",
+      "hoursEndFri": "16:30",
       "greeting": ""
     },
     "adminHash": "bc95e941d8ee82f89c78f8d1cc961ba5bc1f644b3d47293c21d27a506bc660c8"

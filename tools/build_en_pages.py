@@ -67,9 +67,11 @@ PRIVACY_EN = '''<main id="main"><section class="sec"><div class="container prose
 <h3 style="margin-top:28px">5. Your rights</h3><p>You may request access, correction, deletion or suspension of processing of your personal information at any time via the contact below.</p>
 <h3 style="margin-top:28px">6. Contact</h3><p>Email: <span data-co="email"></span> · Phone: <span data-co="tel"></span></p>
 <p style="margin-top:36px;font-size:14px">Effective date: November 2, 2026</p></div></section></main>'''
+SITE = 'https://www.sungsil.com/'
 PAGES = ['index', 'about', 'products', 'product', 'applications', 'support', 'contact', 'privacy', '404']
 for name in PAGES:
     s = open(f'{root}/{name}.html', encoding='utf-8').read()
+    s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
     title, desc = META[name]
     s = s.replace('<html lang="ko">', '<html lang="en">')
     s = re.sub(r'<title>[^<]*</title>', f'<title>{title}</title>', s)
@@ -94,15 +96,25 @@ for name in PAGES:
     head, body = s.split('<body', 1)
     body = re.sub(r'(href)="([^"]*)"', fix, body)
     s = head + '<body' + body
-    hreflang = (f'<base href="../">\n<link rel="alternate" hreflang="ko" href="{page_file}">\n<link rel="alternate" hreflang="en" href="en/{page_file}">\n')
+    canon = '' if name in ('product', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
+    hreflang = (f'<base href="../">\n<link rel="alternate" hreflang="ko" href="{SITE}{page_file}">\n<link rel="alternate" hreflang="en" href="{SITE}en/{page_file}">\n<link rel="alternate" hreflang="x-default" href="{SITE}{page_file}">\n' + canon)
     s = s.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + hreflang, 1)
     s = s.replace('<script src="data/site-data.js"></script>', '<script src="data/site-data.js"></script>\n<script src="data/site-data-en.js"></script>')
+    # English structured data (search engines show this, so no Korean on EN pages)
+    s = s.replace('"name":"주식회사 에스엠지","alternateName":["SMG Co., Ltd.","SUNGSIL MFG"]', '"name":"SMG Co., Ltd.","alternateName":["주식회사 에스엠지","SUNGSIL MFG"]')
+    s = s.replace('"streetAddress":"시화벤처로 305 (시화 MTV 3사 204호)","addressLocality":"시흥시","addressRegion":"경기도"', '"streetAddress":"305, Sihwa venture-ro (Sihwa MTV 3sa #204)","addressLocality":"Siheung-si","addressRegion":"Gyeonggi-do"')
     left = [x for x in re.findall(r'>([^<>]*[가-힣][^<>]*)<', s[s.index('<body'):])]
     open(f'{root}/en/{page_file}', 'w', encoding='utf-8').write(s)
     print(name, 'untranslated:', left[:5])
 # hreflang on Korean pages
 for name in PAGES:
     p = f'{root}/{name}.html'; s = open(p, encoding='utf-8').read()
-    if 'hreflang="en"' not in s:
-        s = s.replace('<meta charset="UTF-8">', f'<meta charset="UTF-8">\n<link rel="alternate" hreflang="ko" href="{name}.html">\n<link rel="alternate" hreflang="en" href="en/{name}.html">', 1)
-        open(p, 'w', encoding='utf-8').write(s)
+    s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
+    canon = '' if name in ('product', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
+    s = s.replace('<meta charset="UTF-8">', f'<meta charset="UTF-8">\n<link rel="alternate" hreflang="ko" href="{SITE}{name}.html">\n<link rel="alternate" hreflang="en" href="{SITE}en/{name}.html">\n<link rel="alternate" hreflang="x-default" href="{SITE}{name}.html">' + canon, 1)
+    open(p, 'w', encoding='utf-8').write(s)
+# home page canonical = site root (matches sitemap.xml)
+import glob
+for f in glob.glob(f'{root}/*.html') + glob.glob(f'{root}/en/*.html'):
+    t = open(f, encoding='utf-8').read(); u = t.replace(f'"{SITE}index.html"', f'"{SITE}"')
+    if u != t: open(f, 'w', encoding='utf-8').write(u)

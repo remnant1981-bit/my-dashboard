@@ -282,6 +282,7 @@
     const rel = D.products.filter((x) => x.category === p.category && x.id !== p.id).slice(0, 4);
     $('#related').innerHTML = rel.length ? `<div class="sec-head"><div><span class="eyebrow">Related</span><h2 class="sec-title" style="font-size:32px">${t('같은 카테고리 제품', 'Related products')}</h2></div></div><div class="prod-grid">${rel.map(prodCard).join('')}</div>` : '';
     // JSON-LD
+    const cn = document.createElement('link'); cn.rel = 'canonical'; cn.href = 'https://www.sungsil.com/' + (EN ? 'en/' : '') + 'product.html?id=' + encodeURIComponent(p.id); document.head.appendChild(cn);
     const ld = document.createElement('script'); ld.type = 'application/ld+json';
     ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: p.code + ' ' + p.name, description: p.summary, image: p.images, brand: { '@type': 'Brand', name: 'SMG' }, manufacturer: { '@type': 'Organization', name: D.company.nameEn } });
     document.head.appendChild(ld);
@@ -305,7 +306,7 @@
   function renderMap(el) {
     if (!el) return;
     const q = encodeURIComponent(D.company.mapQuery || D.company.address);
-    el.innerHTML = `<iframe title="${t('오시는 길 지도', 'Map')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${q}&z=16&output=embed"></iframe>`;
+    el.innerHTML = `<iframe title="${t('오시는 길 지도', 'Map')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${q}&z=16&hl=${EN ? 'en' : 'ko'}&output=embed"></iframe>`;
   }
 
   P.applications = function () {
