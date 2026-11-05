@@ -41,8 +41,8 @@ window.SMG_DATA_EN = {
     }
   },
   "hero": {
-    "eyebrow": "Since 1990 · Sensor · Heater · Feedthrough",
-    "title": "From generators to LNG carriers,\nwe measure and heat in extreme environments",
+    "eyebrow": "A Higher Degree of Confidence",
+    "title": "From generators to LNG carriers,\nwe take charge of extreme temperatures",
     "subtitle": "Temperature Sensors · Thermowells · Heaters · Pressure Transmitters · Cable Bushings · Feedthroughs\n35 years of manufacturing expertise and global explosion-proof certifications",
     "image": "assets/img/hero.webp",
     "ctaPrimary": "View Products",

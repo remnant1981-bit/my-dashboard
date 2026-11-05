@@ -53,8 +53,8 @@ window.SMG_DEFAULT_DATA = {
     "adminHash": "bc95e941d8ee82f89c78f8d1cc961ba5bc1f644b3d47293c21d27a506bc660c8"
   },
   "hero": {
-    "eyebrow": "Since 1990 · Sensor · Heater · Feedthrough",
-    "title": "발전기에서 LNG선까지,\n극한 환경을 측정하고 가열합니다",
+    "eyebrow": "A Higher Degree of Confidence",
+    "title": "발전기에서 LNG선까지,\n극한 환경의 온도를 책임집니다",
     "subtitle": "온도센서 · 써모웰 · 히터 · 압력 트랜스미터 · 케이블 부싱 · 피드스루\n35년 제조 기술력과 글로벌 방폭 인증으로 설비의 안전을 지킵니다",
     "image": "assets/img/hero.webp",
     "ctaPrimary": "제품 보기",
