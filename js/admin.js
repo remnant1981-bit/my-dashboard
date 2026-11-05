@@ -380,6 +380,7 @@
       el.insertAdjacentHTML('beforeend', '<div class="note">설정(문의 수신, 팝업, 카탈로그, 비밀번호)은 국문·영문 사이트에 <b>공통</b>으로 적용됩니다.</div>');
       formCard(el, '문의 폼 수신', '방문자 문의를 메일로 받기 위한 설정', [
         { k: 'formEndpoint', label: '폼 수신 주소 (Endpoint URL)', full: true, ph: 'https://formspree.io/f/xxxxxxx', hint: 'Formspree·Getform·Web3Forms 등 JSON POST를 받는 서비스 주소. 비워두면 방문자 메일 앱으로 발송.' },
+        { k: 'formBackupKey', label: '예비 수신 Web3Forms Access Key', full: true, ph: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', hint: '1순위 주소가 한도 초과·장애로 실패하면 자동으로 Web3Forms(무료 월 250건)로 전송. 비워두면 예비 전송 없음.' },
         { k: 'notifyEmail', label: '문의 수신 이메일 (메일 앱 방식)', full: true }], s);
       if (!s.chat) s.chat = { enabled: true, kakaoChannel: '', channelTalkKey: '', hoursStart: '08:30', hoursEnd: '17:30', hoursEndFri: '16:30', greeting: '' };
       formCard(el, '채팅 상담', '화면 오른쪽 아래 채팅 버튼. 기본 상담봇(제품 찾기·FAQ·대화형 문의 접수)은 바로 동작하며, 아래 ID/키를 입력하면 실시간 상담이 함께 연결됩니다.', [

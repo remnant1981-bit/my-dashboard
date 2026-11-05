@@ -22,7 +22,22 @@
   // 문의 수신·카탈로그 등 운영 설정은 국문 데이터(관리자 [설정])를 공통으로 사용
   if (EN) D = Object.assign({}, D, { settings: KO_DATA.settings });
   const dispName = (p) => (EN ? p.name : p.nameKo);
-  window.SMG = { data: D, DRAFT_KEY, INQ_KEY, safeGet, safeSet, EN, L };
+  /* 문의 전송: 1순위 settings.formEndpoint(Formspree 등) → 실패(한도 초과·장애) 시 2순위 Web3Forms(settings.formBackupKey) */
+  async function postJSON(url, body) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
+      let j = null; try { j = await r.clone().json(); } catch (x) { j = null; }
+      // 공통 성공 판정: HTTP 성공 + 응답 본문의 실패 플래그 없음 (미인증·한도초과는 success:false / errors)
+      return r.ok && !(j && (j.success === false || j.success === 'false' || j.ok === false || (Array.isArray(j.errors) && j.errors.length)));
+    } catch (e) { return false; }
+  }
+  async function sendInquiry(subject, data) {
+    const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
+    if (ep && await postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data))) return 'primary';
+    if (key && await postJSON('https://api.web3forms.com/submit', Object.assign({}, data, { access_key: key, subject, from_name: EN ? 'SMG Website' : 'SMG 홈페이지', replyto: data.email || undefined }))) return 'backup';
+    return '';
+  }
+  window.SMG = { data: D, DRAFT_KEY, INQ_KEY, safeGet, safeSet, EN, L, sendInquiry };
 
   /* ---------- Helpers ---------- */
   const $ = (s, r = document) => r.querySelector(s);
@@ -348,16 +363,7 @@
       delete data.website; delete data.agree;
       const rec = Object.assign({ id: 'q' + Date.now(), createdAt: new Date().toISOString(), status: '신규', lang: EN ? 'EN' : 'KO' }, data);
       const btn = $('button[type=submit]', form); btn.disabled = true; btn.textContent = t('전송 중...', 'Sending...');
-      let sent = false;
-      const ep = (D.settings.formEndpoint || '').trim();
-      if (ep) {
-        try {
-          const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ _subject: `[${t('홈페이지 문의', 'Website Inquiry · EN')}] ${data.type} - ${data.company}`, subject: `[${t('홈페이지 문의', 'Website Inquiry · EN')}] ${data.type} - ${data.company}`, _replyto: data.email, _template: 'table', _captcha: 'false', lang: EN ? 'EN' : 'KO' }, data)) });
-          // Formspree / FormSubmit / Web3Forms 공통: HTTP 성공 + 응답 본문의 success 플래그 확인 (미인증 폼은 success:false)
-          let j = null; try { j = await r.clone().json(); } catch (x) { j = null; }
-          sent = r.ok && !(j && (j.success === false || j.success === 'false' || j.ok === false || (Array.isArray(j.errors) && j.errors.length)));
-        } catch (err) { sent = false; }
-      }
+      const sent = !!(await sendInquiry(`[${t('홈페이지 문의', 'Website Inquiry · EN')}] ${data.type} - ${data.company}`, Object.assign({ lang: EN ? 'EN' : 'KO' }, data)));
       try { const arr = JSON.parse(safeGet(INQ_KEY) || '[]'); arr.unshift(rec); safeSet(INQ_KEY, JSON.stringify(arr.slice(0, 500))); } catch (err) {}
       btn.disabled = false; btn.innerHTML = t('문의 접수하기 ', 'Submit inquiry ') + I.arrow;
       if (sent) {

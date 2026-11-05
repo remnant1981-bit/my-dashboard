@@ -40,7 +40,7 @@
 | 키 | 내용 |
 |---|---|
 | `company` | 회사명·주소·연락처·대표자·사업자번호 |
-| `settings` | 문의 수신(`formEndpoint`, `notifyEmail`), 카탈로그 경로, GA ID, 팝업, 채팅(`chat`), `adminHash`(수정 금지) |
+| `settings` | 문의 수신(`formEndpoint` 1순위 Formspree, `formBackupKey` 예비 Web3Forms, `notifyEmail`), 카탈로그 경로, GA ID, 팝업, 채팅(`chat`), `adminHash`(수정 금지) |
 | `hero`, `stats`, `about` | 메인 슬라이드·핵심수치·회사소개 |
 | `categories` | 6개 제품군 |
 | `products` | 19개 제품. 키: `id, category, code, name, nameKo, summary, images, features, applications, installation, certs, specs, orderCode, featured, catalogPage, tmin, tmax` |
@@ -104,7 +104,8 @@
 | 주기 | 항목 |
 |---|---|
 | 월 1회 | 메인·제품·견적문의 페이지 정상 표시 (PC·모바일), 국문/영문 전환 |
-| 월 1회 | 견적문의 테스트 발송 → 수신 메일 도착 확인 |
+| 월 1회 | 견적문의 테스트 발송 → 수신 메일 도착 확인 (스팸함 포함) |
+| 월 1회 | Formspree 대시보드 이번 달 제출 수 확인 — 무료 월 50건, **40건 이상이면 훈이님께 보고** (초과분은 예비 Web3Forms 월 250건으로 자동 전환) |
 | 월 1회 | 공지 최신성 (3개월 이상 업데이트 없으면 소식 등록 제안) |
 | 분기 1회 | 카탈로그 PDF 최신본 여부, 인증서 유효기간, 연혁 반영 |
 | 연 1회 | 도메인 자동갱신 상태(만료 2033-07-21), HTTPS 정상, 저작권 연도 |

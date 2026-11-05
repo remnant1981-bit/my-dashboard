@@ -25,6 +25,7 @@ window.SMG_DEFAULT_DATA = {
   },
   "settings": {
     "formEndpoint": "https://formspree.io/f/mnppwlzv",
+    "formBackupKey": "",
     "notifyEmail": "sungsil@sungsil.com",
     "catalogPdf": "assets/SMG_Products_Catalogue_2026.pdf",
     "gaId": "",
