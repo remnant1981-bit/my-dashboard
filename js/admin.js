@@ -44,7 +44,7 @@
     if (window.crypto && crypto.subtle) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join(''); }
     let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return 'x' + h;
   }
-  async function expectedHash() { return DATA.ko.settings.adminHash || (await sha('smg1234!')); }
+  async function expectedHash() { return (PUB.ko.settings && PUB.ko.settings.adminHash) || DATA.ko.settings.adminHash || (await sha('smg1234!')); }
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const ok = (await sha($('#pw').value)) === (await expectedHash());

@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /admin.html
-Disallow: /dashboard/
 Sitemap: https://www.sungsil.com/sitemap.xml
