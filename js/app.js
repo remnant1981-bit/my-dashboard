@@ -342,7 +342,7 @@
 
   P.support = function () {
     $('#news-list').innerHTML = newsList(D.news); bindNews($('#news-list'));
-    $('#dl-list').innerHTML = D.downloads.map((d) => `<div class="dl-item"><div class="ic">${esc(d.type)}</div><div><b>${esc(d.title)}</b><span>${esc(d.desc)}</span></div><a class="btn btn-dark btn-sm" href="${esc(d.file)}" download>${I.dl} ${t('다운로드', 'Download')}</a></div>`).join('');
+    $('#dl-list').innerHTML = D.downloads.map((d) => `<div class="dl-item"><div class="ic">${esc(d.type)}</div><div><b>${esc(d.title)}</b><span>${esc(d.desc)}</span></div><a class="btn btn-dark btn-sm" href="${esc(d.file)}" ${/^https?:/i.test(d.file || '') ? 'target="_blank" rel="noopener"' : 'download'}>${I.dl} ${t('다운로드', 'Download')}</a></div>`).join('');
     $('#faq-list').innerHTML = D.faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('');
   };
 
@@ -351,6 +351,12 @@
     $('#contact-card').innerHTML = `<span class="eyebrow" style="color:#ff8a82">Contact</span><h3 style="margin-top:12px">${t('기술 상담부터 견적까지<br>전문 엔지니어가 답변드립니다', 'From technical consultation to quotation,<br>our engineers will respond')}</h3>
       <dl><dt>TEL</dt><dd><a href="${telHref(c.tel)}">${esc(c.tel)}</a></dd><dt>FAX</dt><dd>${esc(c.fax)}</dd><dt>E-MAIL</dt><dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></dd><dt>HOURS</dt><dd>${esc(c.hours)}</dd><dt>ADDRESS</dt><dd style="font-size:15px">${esc(c.address)}</dd></dl>`;
     const sel = $('#f-type'); sel.innerHTML = D.inquiryTypes.map((t) => `<option>${esc(t)}</option>`).join('');
+    // 파일 첨부 안내 (무료 문의 서비스는 첨부 미지원 → 메일 송부)
+    const msgField = $('#f-msg') && $('#f-msg').closest('.field');
+    if (msgField && !$('#f-attach-note')) {
+      const mail = (D.settings && D.settings.notifyEmail) || c.email;
+      msgField.insertAdjacentHTML('afterend', `<div class="field full attach-note" id="f-attach-note">${I.dl}<p>${t(`<b>도면·사양서 등 파일 첨부</b>는 <a href="mailto:${esc(mail)}">${esc(mail)}</a> 로 메일 보내주세요. 메일 제목에 <b>회사명</b>을 적어주시면 접수 문의와 함께 확인합니다. 구글드라이브·네이버 MYBOX 등 공유 링크는 문의 내용에 붙여넣으셔도 됩니다.`, `<b>To attach drawings or specifications</b>, please email them to <a href="mailto:${esc(mail)}">${esc(mail)}</a> with your <b>company name</b> in the subject. You may also paste a shared link (Google Drive, Dropbox, etc.) into the message.`)}</p></div>`);
+    }
     const pSel = $('#f-product');
     pSel.innerHTML = `<option value="">${t('선택 안 함', 'Not specified')}</option>` + D.categories.map((cat) => `<optgroup label="${esc(cat.name)}">${D.products.filter((p) => p.category === cat.id).map((p) => `<option>${esc(p.code + ' ' + p.name)}</option>`).join('')}</optgroup>`).join('');
     const pre = params.get('product'); if (pre) { if (![...pSel.options].some((o) => o.value === pre)) pSel.add(new Option(pre, pre)); pSel.value = pre; }

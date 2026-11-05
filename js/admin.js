@@ -9,6 +9,12 @@
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { toast('브라우저 저장 공간이 부족합니다. 이미지 용량을 줄여주세요.'); return false; } }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
   const PUB = { ko: window.SMG_DEFAULT_DATA, en: window.SMG_DATA_EN || null };
+  /* 자료실 첨부: 선택한 파일은 [GitHub에 게시] 때 assets/files/ 에 별도 파일로 업로드 (데이터 파일에 넣지 않음 → 페이지 속도 유지) */
+  const PENDING = new Map(); // path -> File
+  const MAX_UPLOAD = 25 * 1024 * 1024;
+  const safeName = (n) => { const m = String(n).match(/^(.*?)(\.[A-Za-z0-9]{1,8})?$/); const base = (m[1] || 'file').normalize('NFC').replace(/[^\w가-힣.-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'file'; return base + (m[2] || '').toLowerCase(); };
+  const b64 = (file) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(file); });
+  window.addEventListener('beforeunload', (e) => { if (PENDING.size) { e.preventDefault(); e.returnValue = ''; } });
   function loadDraft(l) {
     const P = PUB[l]; let d = null;
     try { d = JSON.parse(ls.get(DRAFT_KEYS[l])); } catch (e) { d = null; }
@@ -53,7 +59,8 @@
     start();
   });
   let authed = false; try { authed = sessionStorage.getItem(AUTH_KEY) === '1'; } catch (e) {}
-  if (authed) start();
+  // 새로고침 시 자동 로그인: 아래 const(MENU 등) 초기화가 끝난 뒤 실행해야 함 (TDZ 오류 방지)
+  if (authed) setTimeout(start, 0);
 
   /* ---------- Menu ---------- */
   const MENU = [
@@ -97,7 +104,7 @@
       case 'pairs': return `<div class="${cls}">${lab}<div data-pairs="${f.k}">${(val || []).map((v) => pairRow(v)).join('')}</div><button type="button" class="b b-line b-sm" data-addp="${f.k}" style="justify-self:start">+ 행 추가</button>${hint}</div>`;
       case 'images': return `<div class="${cls}">${lab}<div class="imgs" data-imgs="${f.k}">${imgsInner(val || [], true)}</div><small>첫 번째 이미지가 대표 이미지입니다. 업로드 시 자동으로 최대 1400px WebP로 압축됩니다. 이미지를 클릭하면 대표로 지정됩니다.</small></div>`;
       case 'image': return `<div class="${cls}">${lab}<div class="imgs" data-img="${f.k}">${imgsInner(val ? [val] : [], false)}</div><input data-k="${f.k}" value="${esc(val && val.startsWith('data:') ? '(업로드 이미지)' : val)}" placeholder="assets/img/파일명.webp" ${val && val.startsWith('data:') ? 'readonly' : ''}>${hint}</div>`;
-      case 'file': return `<div class="${cls}">${lab}<div style="display:flex;gap:8px"><input data-k="${f.k}" value="${esc(val)}" placeholder="assets/파일명.pdf 또는 https://..." style="flex:1"><label class="b b-line">파일 선택<input type="file" data-file="${f.k}" hidden></label></div><small>권장: 파일을 저장소 assets 폴더에 올리고 경로를 입력. 2MB 이하 파일은 직접 첨부 가능.</small></div>`;
+      case 'file': return `<div class="${cls}">${lab}<div style="display:flex;gap:8px"><input data-k="${f.k}" value="${esc(val)}" placeholder="assets/파일명.pdf 또는 https://..." style="flex:1"><label class="b b-line">파일 선택<input type="file" data-file="${f.k}" hidden></label></div><small>[파일 선택] 시 <b>assets/files/</b> 경로가 입력되고, [게시하기 → GitHub에 게시] 때 파일이 함께 업로드됩니다(최대 25MB). 구글드라이브 등 외부 링크(https://...)도 입력 가능.</small></div>`;
       case 'hidden': return '<div></div>';
       case 'optnum': return `<label class="${cls}">${lab}<input type="number" step="any" data-k="${f.k}" value="${val === undefined || val === null ? '' : esc(val)}">${hint}</label>`;
       default: return `<label class="${cls}">${lab}<input type="${f.type || 'text'}" data-k="${f.k}" value="${esc(val)}" ${f.ph ? `placeholder="${esc(f.ph)}"` : ''}>${hint}</label>`;
@@ -131,8 +138,13 @@
       }
       if (t.dataset.file) {
         const file = t.files[0]; if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { toast('2MB 초과 파일은 assets 폴더에 업로드 후 경로를 입력하세요'); return; }
-        const r = new FileReader(); r.onload = () => { $(`input[data-k="${t.dataset.file}"]`, root).value = r.result; toast('파일 첨부됨'); }; r.readAsDataURL(file);
+        if (file.size > MAX_UPLOAD) { toast('25MB 초과 파일은 구글드라이브 등에 올리고 공유 링크(https://...)를 입력하세요'); t.value = ''; return; }
+        let path = 'assets/files/' + safeName(file.name);
+        for (let i = 2; PENDING.has(path) && PENDING.get(path) !== file; i++) path = path.replace(/(-\d+)?(\.[^.]+)?$/, (m0, n, ext) => `-${i}${ext || ''}`);
+        PENDING.set(path, file);
+        const inp = $(`input[data-k="${t.dataset.file}"]`, root); inp.value = path; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+        t.value = '';
+        toast(`첨부 대기: ${path} (${(file.size / 1048576).toFixed(1)}MB) → [게시하기]에서 업로드됩니다`);
       }
     });
     root.addEventListener('input', (e) => { const t = e.target; if (t.dataset.k && t.closest('.f') && t.closest('.f').querySelector('[data-img]') && !t.readOnly) { const box = t.closest('.f').querySelector('[data-img]'); box.innerHTML = imgsInner(t.value ? [t.value] : [], false); } });
@@ -400,13 +412,16 @@
     publish(el) {
       let gh = {}; try { gh = JSON.parse(ls.get(GH_KEY) || '{}'); } catch (e) {}
       const changed = dirtyState();
-      el.innerHTML = `<div class="note ${changed ? 'warn' : ''}">${changed ? '<b>미게시 변경사항이 있습니다.</b> 아래 방법 중 하나로 게시하세요.' : '현재 임시저장 내용이 게시본과 동일합니다.'}</div>
+      const pend = [...PENDING.entries()];
+      const pendHtml = pend.length ? `<div class="note warn"><b>업로드 대기 파일 ${pend.length}개</b> — [GitHub에 게시] 시 함께 업로드됩니다. 방법 2(파일 내려받기)를 쓰는 경우 아래 파일을 서버의 <code>assets/files/</code> 폴더에 직접 올려주세요.<ul style="margin:8px 0 0 18px">${pend.map(([pa, f], i) => `<li><code>${esc(pa)}</code> (${(f.size / 1048576).toFixed(1)}MB) <button class="b b-line" data-pdl="${i}" style="padding:2px 8px;font-size:12px">내려받기</button></li>`).join('')}</ul></div>` : '';
+      el.innerHTML = pendHtml + `<div class="note ${changed ? 'warn' : ''}">${changed ? '<b>미게시 변경사항이 있습니다.</b> 아래 방법 중 하나로 게시하세요.' : '현재 임시저장 내용이 게시본과 동일합니다.'}</div>
       <div class="card"><h2>방법 1. GitHub 직접 게시 (권장)</h2><div class="desc">GitHub Pages/Netlify/Vercel 등 저장소 연동 호스팅 사용 시, 버튼 한 번으로 <code>data/site-data.js</code>(국문)·<code>data/site-data-en.js</code>(영문) 중 변경된 파일을 커밋하여 1~2분 내 사이트에 반영됩니다. 현재: 국문 ${dirtyOf('ko') ? '<b style="color:#b54708">변경됨</b>' : '변경 없음'} · 영문 ${dirtyOf('en') ? '<b style="color:#b54708">변경됨</b>' : '변경 없음'}</div>
         <div class="fg"><label class="f"><span>저장소 (owner/repo)</span><input id="gh-repo" value="${esc(gh.repo || 'remnant1981-bit/my-dashboard')}"></label><label class="f"><span>브랜치</span><input id="gh-br" value="${esc(gh.branch || 'main')}"></label>
         <label class="f full"><span>GitHub Personal Access Token</span><input id="gh-tok" type="password" placeholder="github_pat_... (Contents: Read & Write 권한)" autocomplete="off"><small>토큰은 저장되지 않으며 이 창을 닫으면 사라집니다. GitHub → Settings → Developer settings → Fine-grained tokens에서 해당 저장소 Contents 쓰기 권한으로 발급.</small></label></div>
         <div style="margin-top:14px;display:flex;justify-content:flex-end"><button class="b b-pri" id="gh-go">GitHub에 게시</button></div></div>
       <div class="card"><h2>방법 2. 파일 내려받아 업로드</h2><div class="desc">일반 웹호스팅(FTP) 사용 시: 파일을 내려받아 서버의 <code>data/site-data.js</code>에 덮어쓰기.</div><div class="toolbar"><button class="b b-dark" id="dl-js">국문 site-data.js 내려받기</button>${DATA.en ? '<button class="b b-dark" id="dl-js-en">영문 site-data-en.js 내려받기</button>' : ''}</div></div>
       <div class="card"><h2>백업 · 복원</h2><div class="desc">전체 콘텐츠를 JSON으로 백업하거나 복원합니다.</div><div class="toolbar"><button class="b b-line" id="bk">백업(JSON) 다운로드</button><label class="b b-line">백업 파일 복원<input type="file" id="rs" accept=".json,application/json" hidden></label><button class="b b-del" id="rv">임시저장 폐기 (게시본으로 되돌리기)</button></div></div>`;
+      $$('[data-pdl]', el).forEach((b) => (b.onclick = () => { const [pa, f] = pend[+b.dataset.pdl]; const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = pa.split('/').pop(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }));
       $('#dl-js').onclick = () => { download(buildJS('ko'), 'site-data.js', 'text/javascript;charset=utf-8'); toast('다운로드 완료 → 서버 data 폴더에 업로드하세요'); };
       const dle = $('#dl-js-en'); if (dle) dle.onclick = () => { download(buildJS('en'), 'site-data-en.js', 'text/javascript;charset=utf-8'); toast('다운로드 완료 → 서버 data 폴더에 업로드하세요'); };
       $('#bk').onclick = () => download(JSON.stringify(D, null, 2), `SMG_backup_${LANG.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
@@ -419,6 +434,15 @@
         const btn = $('#gh-go'); btn.disabled = true; btn.textContent = '게시 중...';
         const H = { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json' };
         try {
+          for (const [pa, f] of [...PENDING.entries()]) {
+            btn.textContent = `파일 업로드 중... ${pa.split('/').pop()}`;
+            const api = `https://api.github.com/repos/${repo}/contents/${pa.split('/').map(encodeURIComponent).join('/')}`;
+            let sha0; const g = await fetch(api + '?ref=' + encodeURIComponent(br), { headers: H }); if (g.ok) sha0 = (await g.json()).sha; else if (g.status !== 404) throw new Error('파일 조회 실패 (' + g.status + ')');
+            const p = await fetch(api, { method: 'PUT', headers: H, body: JSON.stringify({ message: `CMS: 자료 파일 업로드 ${pa}`, content: await b64(f), branch: br, sha: sha0 }) });
+            if (!p.ok) { const j = await p.json().catch(() => ({})); throw new Error(pa + ' ' + (j.message || '') + ' (' + p.status + ')'); }
+            PENDING.delete(pa);
+          }
+          btn.textContent = '게시 중...';
           const langs = ['ko', 'en'].filter((l) => DATA[l] && dirtyOf(l));
           if (!langs.length) langs.push(LANG);
           for (const l of langs) {
