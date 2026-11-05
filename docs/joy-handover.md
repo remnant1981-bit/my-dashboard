@@ -116,7 +116,7 @@
 
 - [ ] GitHub Settings → Pages → **Enforce HTTPS** 체크
 - [ ] 이전 서버(115.68.7.110) 호스팅 해지 시점 결정 (새 사이트 안정 확인 후)
-- [ ] 문의 수신: FormSubmit 연결됨(2026-11-05). sungsil@sungsil.com 인증 메일 클릭 필요 — 인증 전·장애 시 방문자 메일앱 방식으로 자동 전환
+- [x] 문의 수신: Formspree 연결(2026-11-05, 폼 "SMG 홈페이지 문의", 무료 월 50건·내역 30일 보관, 허용 도메인 sungsil.com). 장애 시 방문자 메일앱 방식으로 자동 전환
 - [ ] 대표자명 최종 확인
 - [ ] (선택) 카카오톡 채널 ID / 채널톡 키, Google Analytics ID 등록
 
