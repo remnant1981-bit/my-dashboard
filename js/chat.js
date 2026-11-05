@@ -144,15 +144,8 @@
       const d = state.data, q = S.quote ? S.quote.getQ() : [];
       const items = q.map((x) => { const p = D.products.find((y) => y.id === x.id); return p ? `- ${p.code} ${p.name} × ${x.qty}` : ''; }).filter(Boolean).join('\n');
       const rec = { id: 'q' + Date.now(), createdAt: new Date().toISOString(), status: '신규', lang: EN ? 'EN' : 'KO', source: 'chat', type: d.type, product: '', company: d.company, name: d.name, phone: d.phone || '', email: d.email || '', qty: '', message: d.message, items };
-      let sent = false; const ep = (D.settings.formEndpoint || '').trim();
       const subject = `[${t('채팅 문의', 'Chat Inquiry · EN')}] ${d.type} - ${d.company}`;
-      if (ep) {
-        try {
-          const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ _subject: subject, subject, _replyto: d.email || undefined, _template: 'table', _captcha: 'false' }, rec)) });
-          let j = null; try { j = await r.clone().json(); } catch (x) { j = null; }
-          sent = r.ok && !(j && (j.success === false || j.success === 'false' || j.ok === false || (Array.isArray(j.errors) && j.errors.length)));
-        } catch (e) { sent = false; }
-      }
+      const sent = !!(S.sendInquiry && await S.sendInquiry(subject, rec));
       try { const arr = JSON.parse(localStorage.getItem(S.INQ_KEY) || '[]'); arr.unshift(rec); localStorage.setItem(S.INQ_KEY, JSON.stringify(arr.slice(0, 500))); } catch (e) {}
       state.flow = null; persist();
       if (sent) await bot(t(`<b>접수되었습니다.</b> 담당자가 확인 후 ${isOpen() ? '곧' : '다음 영업일에'} 회신드리겠습니다. 감사합니다.`, `<b>Submitted.</b> Our team will reply ${isOpen() ? 'shortly' : 'on the next business day'}. Thank you.`), mainMenu());
