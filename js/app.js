@@ -386,7 +386,7 @@
     $('#notice').innerHTML = `<article class="nt-art"><div class="nt-meta"><span class="chip">${esc(n.category)}</span><time datetime="${esc(n.date)}">${esc(n.date)}</time></div><div class="nt-body">${body}</div></article>
       <nav class="nt-nav" aria-label="${t('이전·다음 공지', 'Previous and next')}">${navItem(newer, t('다음 글', 'Newer'), 'nt-next')}${navItem(older, t('이전 글', 'Older'), 'nt-prev')}</nav>
       <div class="nt-actions">${back}<a class="btn btn-line" href="${L('contact.html')}">${t('문의하기', 'Contact us')}</a></div>`;
-    if (!document.querySelector('link[rel=canonical]')) { const cn = document.createElement('link'); cn.rel = 'canonical'; cn.href = 'https://www.sungsil.com/' + (EN ? 'en/' : '') + 'notice.html?id=' + encodeURIComponent(n.id); document.head.appendChild(cn); }
+    { let cn = document.querySelector('link[rel=canonical]'); if (!cn) { cn = document.createElement('link'); cn.rel = 'canonical'; document.head.appendChild(cn); } cn.href = 'https://www.sungsil.com/' + (EN ? 'en/' : '') + 'notice.html?id=' + encodeURIComponent(n.id); }
   };
 
   P.contact = function () {
