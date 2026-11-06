@@ -103,15 +103,19 @@
         const ranged = list.filter((p) => typeof p.tmin === 'number'), none = list.filter((p) => typeof p.tmin !== 'number');
         const ok = (p) => Tn === null || (Tn >= p.tmin && Tn <= p.tmax);
         const match = ranged.filter(ok).length;
-        cmp.innerHTML = `<div class="cmp-top"><label class="cmp-t"><span>${t('필요한 사용 온도', 'Required operating temperature')}</span><input type="number" inputmode="numeric" step="1" placeholder="${t('예: -196', 'e.g. -196')}" value="${esc(T)}"><em>℃</em></label><p class="cmp-note">${Tn === null ? t('온도를 입력하면 해당 온도에서 사용 가능한 제품만 강조됩니다.', 'Enter a temperature to highlight products rated for it.') : t(`${Tn}℃ 사용 가능 제품 <b>${match}</b>종`, `<b>${match}</b> products rated for ${Tn}℃`)}</p></div>
-          <div class="cmp-chart" role="table" aria-label="${t('제품별 사용 온도 범위', 'Operating temperature range by product')}">
+        // 입력창은 한 번만 만들고(재생성 시 커서가 앞으로 가 뒷자리부터 입력되는 문제 방지) 안내문·차트만 갱신
+        if (!$('.cmp-t input', cmp)) {
+          cmp.innerHTML = `<div class="cmp-top"><label class="cmp-t"><span>${t('필요한 사용 온도', 'Required operating temperature')}</span><input type="text" inputmode="numeric" pattern="-?[0-9]*" maxlength="5" autocomplete="off" placeholder="${t('예: -196', 'e.g. -196')}" value="${esc(T)}"><em>℃</em></label><p class="cmp-note"></p></div><div class="cmp-body"></div>`;
+          const inp = $('.cmp-t input', cmp);
+          inp.addEventListener('input', () => { const v = inp.value.replace(/[^0-9-]/g, '').replace(/(?!^)-/g, ''); if (v !== inp.value) { const c = inp.selectionStart; inp.value = v; try { inp.setSelectionRange(c - 1, c - 1); } catch (e) {} } T = /^-?\d{1,4}$/.test(v) ? v : ''; drawCmp(); });
+        }
+        $('.cmp-note', cmp).innerHTML = Tn === null ? t('온도를 입력하면 해당 온도에서 사용 가능한 제품만 강조됩니다.', 'Enter a temperature to highlight products rated for it.') : t(`${Tn}℃ 사용 가능 제품 <b>${match}</b>종`, `<b>${match}</b> products rated for ${Tn}℃`);
+        $('.cmp-body', cmp).innerHTML = `<div class="cmp-chart" role="table" aria-label="${t('제품별 사용 온도 범위', 'Operating temperature range by product')}">
             <div class="cmp-axis" aria-hidden="true"><span class="cmp-lab"></span><div class="cmp-track">${ticks.map((x) => `<i style="left:${pos(x)}%"><b>${x}</b></i>`).join('')}${Tn !== null ? `<u class="cmp-mark" style="left:${pos(Tn)}%"><b>${Tn}℃</b></u>` : ''}</div><span class="cmp-act"></span></div>
             ${ranged.sort((a, b) => a.tmin - b.tmin).map((p) => { const c = catOf(p).color || '#e1251b'; const q = inQ(p.id); return `<div class="cmp-row ${ok(p) ? '' : 'dim'}" role="row"><a class="cmp-lab" role="rowheader" href="${L('product/' + encodeURIComponent(p.id) + '.html')}"><b>${esc(p.code)}</b><small>${esc(pname(p))}</small></a><div class="cmp-track" role="cell"><span class="cmp-bar" style="left:${pos(p.tmin)}%;width:${pos(p.tmax) - pos(p.tmin)}%;background:${esc(c)}"></span>${Tn !== null ? `<u class="cmp-mark" style="left:${pos(Tn)}%"></u>` : ''}<em class="cmp-val">${p.tmin} ~ ${p.tmax}℃</em></div><button type="button" class="cmp-act qadd ${q ? 'on' : ''}" data-id="${esc(p.id)}" aria-pressed="${q}" aria-label="${t('견적함 담기', 'Add to quote')}: ${esc(p.code)}">${q ? IC.check : IC.plus}</button></div>`; }).join('')}
           </div>
           ${none.length ? `<p class="cmp-none">${t('온도 범위 비교 대상 아님', 'Not temperature-rated')}: ${none.map((p) => `<a href="${L('product/' + encodeURIComponent(p.id) + '.html')}">${esc(p.code)}</a>`).join(', ')}</p>` : ''}
           <p class="cmp-src">${t('※ 카탈로그 사양 기준 작동 온도 범위(로그 스케일). 모델·옵션에 따라 다를 수 있습니다.', '※ Operating ranges per catalogue specifications (log scale). May vary by model and option.')}</p>`;
-        const inp = $('.cmp-t input', cmp);
-        inp.oninput = () => { T = inp.value.replace(/[^0-9-]/g, ''); const pos0 = inp.selectionStart; drawCmp(); const n = $('.cmp-t input', cmp); n.focus(); try { n.setSelectionRange(pos0, pos0); } catch (e) {} };
         $$('.qadd', cmp).forEach((b) => (b.onclick = () => { toggleQ(b.dataset.id); drawCmp(); }));
       }
       function setView(v) {

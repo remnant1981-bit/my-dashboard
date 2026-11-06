@@ -102,7 +102,7 @@ for name in PAGES:
     head, body = s.split('<body', 1)
     body = re.sub(r'(href)="([^"]*)"', fix, body)
     s = head + '<body' + body
-    canon = '' if name in ('product', 'notice', 'cases', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
+    canon = '' if name in ('product', '404') else f'<link rel="canonical" href="{SITE}en/{page_file}">\n'
     hreflang = (f'<base href="../">\n<link rel="alternate" hreflang="ko" href="{SITE}{page_file}">\n<link rel="alternate" hreflang="en" href="{SITE}en/{page_file}">\n<link rel="alternate" hreflang="x-default" href="{SITE}{page_file}">\n' + canon)
     s = s.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + hreflang, 1)
     s = s.replace('<script src="data/site-data.js"></script>', '<script src="data/site-data.js"></script>\n<script src="data/site-data-en.js"></script>')
@@ -116,7 +116,7 @@ for name in PAGES:
 for name in PAGES:
     p = f'{root}/{name}.html'; s = open(p, encoding='utf-8').read()
     s = re.sub(r'<link rel="(alternate" hreflang="[^"]+|canonical)" href="[^"]*">\n', '', s)
-    canon = '' if name in ('product', 'notice', 'cases', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
+    canon = '' if name in ('product', '404') else f'\n<link rel="canonical" href="{SITE}{name}.html">'
     s = s.replace('<meta charset="UTF-8">', f'<meta charset="UTF-8">\n<link rel="alternate" hreflang="ko" href="{SITE}{name}.html">\n<link rel="alternate" hreflang="en" href="{SITE}en/{name}.html">\n<link rel="alternate" hreflang="x-default" href="{SITE}{name}.html">' + canon, 1)
     open(p, 'w', encoding='utf-8').write(s)
 # home page canonical = site root (matches sitemap.xml)
