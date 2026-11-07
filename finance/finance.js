@@ -69,7 +69,7 @@
     var rows = schedule(L, L.prepays), t = today(), paid = rows.filter(function (r) { return r.date <= t; });
     var bal = paid.length ? paid[paid.length - 1].balance : L.principal;
     var next = rows.filter(function (r) { return r.date > t; })[0];
-    return { rows: rows, bal: bal, next: next, paidCnt: paid.length, totalInt: sum(rows, 'interest'), remInt: sum(rows.filter(function (r) { return r.date > t; }), 'interest') };
+    return { rows: rows, bal: bal, next: next, paidCnt: paid.length, paidInt: sum(paid, 'interest'), totalInt: sum(rows, 'interest'), remInt: sum(rows.filter(function (r) { return r.date > t; }), 'interest') };
   }
   var TYPE = { equal: '원리금균등', principal: '원금균등', bullet: '만기일시' };
 
@@ -77,15 +77,16 @@
   function render() {
     document.body.classList.toggle('mask', mask);
     var t = today(), sts = state.loans.map(function (L) { return { L: L, s: status(L) }; });
-    var totalBal = 0, remInt = 0, monthPay = 0, curYM = t.slice(0, 7);
+    var totalBal = 0, remInt = 0, paidInt = 0, monthPay = 0, curYM = t.slice(0, 7);
     sts.forEach(function (x) {
-      totalBal += x.s.bal; remInt += x.s.remInt;
+      totalBal += x.s.bal; remInt += x.s.remInt; paidInt += x.s.paidInt;
       x.s.rows.forEach(function (r) { if (r.date.slice(0, 7) === curYM) monthPay += r.interest + r.principal; });
     });
     var fixedMonth = state.exps.reduce(function (s, e) { return s + (e.cycle === 'year' ? e.amount / 12 : e.amount); }, 0);
     $('#summary').innerHTML =
       '<div class="card hl"><span>총 대출 잔액</span><b>' + amt(totalBal) + '</b></div>' +
       '<div class="card"><span>이번 달 대출 상환액</span><b>' + amt(monthPay) + '</b></div>' +
+      '<div class="card hl"><span>지금까지 낸 이자</span><b>' + amt(paidInt) + '</b></div>' +
       '<div class="card"><span>남은 이자 합계</span><b>' + amt(remInt) + '</b></div>' +
       '<div class="card"><span>월 고정지출(연납 월환산)</span><b>' + amt(fixedMonth) + '</b></div>';
 
@@ -123,7 +124,7 @@
       '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="kv"><div><span>잔액</span><b>' + amt(s.bal) + '</b></div><div><span>상환율</span><b>' + pct + '% (' + s.paidCnt + '/' + s.rows.length + '회)</b></div>' +
       '<div><span>다음 납부</span><b>' + (s.next ? s.next.date.slice(5) + ' ' + amt(s.next.interest + s.next.principal) : '-') + '</b></div>' +
-      '<div><span>남은 이자</span><b>' + amt(s.remInt) + '</b></div><div><span>만기</span><b>' + end + '</b></div><div><span>총 이자</span><b>' + amt(s.totalInt) + '</b></div></div>' +
+      '<div><span>지금까지 낸 이자</span><b>' + amt(s.paidInt) + '</b></div><div><span>남은 이자</span><b>' + amt(s.remInt) + '</b></div><div><span>만기</span><b>' + end + '</b></div><div><span>총 이자</span><b>' + amt(s.totalInt) + '</b></div></div>' +
       (pre ? '<div class="pre">중도상환 기록: ' + pre + '</div>' : '') +
       '<details><summary>중도상환 시뮬레이터</summary><div class="sim">' +
       '<label class="f">상환 금액(원)<input type="number" min="0" step="10000" data-s="amt" inputmode="numeric"></label>' +
@@ -131,6 +132,10 @@
       '<label class="f">방식<select data-s="mode"><option value="term">기간 단축</option><option value="payment">월 상환액 감소</option></select></label>' +
       '<label class="f">수수료율(%)<input type="number" min="0" step="0.1" value="0" data-s="fee" inputmode="decimal"></label>' +
       '<button class="b b-pri" data-act="sim" data-id="' + L.id + '">계산</button><div class="out" hidden></div></div></details>' +
+      '<details><summary>금리 대환(갈아타기) 비교</summary><div class="sim">' +
+      '<label class="f">새 금리(연 %)<input type="number" min="0" step="0.01" data-r="rate" inputmode="decimal"></label>' +
+      '<label class="f">대환 비용(원, 중도상환수수료 등)<input type="number" min="0" step="10000" value="0" data-r="fee" inputmode="numeric"></label>' +
+      '<button class="b b-pri" data-act="refi" data-id="' + L.id + '">비교</button><div class="out" hidden></div></div></details>' +
       '<details><summary>상환 스케줄 (' + s.rows.length + '회)</summary><div class="tw"><table><thead><tr><th>회차</th><th>납부일</th><th>납부액</th><th>원금</th><th>이자</th><th>중도상환</th><th>잔액</th></tr></thead><tbody>' +
       s.rows.map(function (r) {
         var cls = r.date <= today() ? 'past' : (s.next && s.next.k === r.k ? 'next' : '');
@@ -199,12 +204,25 @@
     out.dataset.pre = JSON.stringify({ date: date, amount: a, mode: mode });
   }
 
+  function refi(card) {
+    var L = state.loans.filter(function (x) { return x.id === card.dataset.id; })[0], st = status(L), out = card.querySelector('[data-act=refi]').parentElement.querySelector('.out');
+    var v = function (n) { return num(card.querySelector('[data-r=' + n + ']').value); }, rate = v('rate'), fee = v('fee'), left = st.rows.length - st.paidCnt;
+    out.hidden = false;
+    if (st.bal <= 0 || left < 1) { out.textContent = '이미 완납'; return; }
+    if (!card.querySelector('[data-r=rate]').value) { out.textContent = '새 금리를 입력'; return; }
+    var alt = schedule({ principal: st.bal, rate: rate, term: left, grace: 0, type: L.type, start: today(), payDay: L.payDay }, []);
+    var ni = sum(alt, 'interest'), gain = st.remInt - ni - fee;
+    out.innerHTML = '현재 조건 남은 이자 ' + amt(st.remInt) + ' → 새 금리 ' + amt(ni) + '<br>비용 ' + amt(fee) + ' 차감 후 <b>' + (gain >= 0 ? '절감 ' : '손해 ') + amt(Math.abs(gain)) + '</b>' +
+      '<br>잔액 ' + amt(st.bal) + ' · 남은 ' + left + '개월 기준 (같은 상환방식, 거치 없음 가정)';
+  }
+
   /* ---------- 이벤트 ---------- */
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-act]'); if (!t) return;
     var act = t.dataset.act, id = t.dataset.id;
     if (act === 'edit-loan') loanForm(id);
     else if (act === 'edit-exp') expForm(id);
+    else if (act === 'refi') refi(t.closest('.loan'));
     else if (act === 'sim') simulate(t.closest('.loan'));
     else if (act === 'rec-pre') {
       var L = state.loans.filter(function (x) { return x.id === id; })[0], p = JSON.parse(t.closest('.out').dataset.pre);
