@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin.html
+Disallow: /finance/
 Disallow: /docs/
 Disallow: /CLAUDE.md
 Sitemap: https://www.sungsil.com/sitemap.xml
