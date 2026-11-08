@@ -12,9 +12,10 @@
 | `samples/03_scheduled_notify.py` | 주기 확인 + 변경 감지 (HTTP오류 오탐 방지·selector·실패알림 1회) | `tests/` 단위 5건 |
 | `samples/04_dynamic_scraper_selenium.py` | JS 동적 페이지 + 페이지 넘김 (필드 선택자 외부화) | `tests/` 로컬서버+실제 Chrome 통합 2건 + 파서 1건 |
 | `demo/` | **한글 데이터 데모 2종** (위키백과 표 수집·정제·검증, 지점 매출 취합) + 결과 미리보기 이미지 | 실사이트 실행 + `tests/test_demo.py` 7건 |
+| `tools/check_robots.py` | 수주 전 robots.txt 자동 점검 (허용/불허/확인 불가, Crawl-delay, 보수적 판정) | `tests/test_tools.py` 7건 + 실사이트 허용·불허 양쪽 확인 |
 | `exposure/` | 노출·전환용 콘텐츠: 크몽 상세페이지 개선안(시장 관찰·제목/키워드·본문·이미지 구성), 숨고 업종별 견적 응답 6종+거절 템플릿, 사례형 글 2편 | 스니펫 근거(크몽 상위 10개), 수치는 데모 직접 실행값 |
 | `sample_output/` | 샘플 실행 결과 (01 실사이트 2페이지 20건, 02 취합) | 깨끗한 venv에서 직접 실행 |
-| `templates/` | 견적서·문진표·면책 문구, 납품 가이드, 법적 유의, 알림 구현 예시 | 문서 |
+| `templates/` | 견적서·문진표·면책 문구, 납품 가이드, 법적 유의, 알림 구현 예시, **납품 키트(`deliver_kit/`: run.bat·고객용 설명서)** | 문서 (run.bat은 Windows 미검증) |
 | `listing_kmong.md` / `listing_soomgo.md` | 상품·프로필 초안 | 본인 검토 필요 |
 | `contract_checklist.md` | 겸업 선행조건·계약·세무 | 문서 |
 | `CHECKLIST_USER.md` | 본인이 직접 할 일 | 문서 |
@@ -22,14 +23,14 @@
 ## 실행 / 검증
 ```bash
 pip install -r samples/requirements.txt -r requirements-dev.txt
-python -m pytest -q tests      # 현재 27건 (데모 포함. 샘플 20건은 깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
+python -m pytest -q tests      # 현재 34건 (데모·도구 포함. 샘플 20건은 깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
 ```
 
 ## 알려진 제약
 - 04 통합 테스트는 로컬에 Chrome이 있어야 실행됨. PATH에 버전이 다른 chromedriver가 있으면 충돌 가능
 - 01·04 데모는 공개 연습 사이트(quotes.toscrape.com) 기준. 한글 사이트 포트폴리오는 허용된 공개 데이터로 별도 제작 필요
 - 03은 단순 감시 루프. 상시 운영은 OS 스케줄러 등록 필요 (`templates/delivery_guide.md`)
-- robots.txt 자동 확인 기능은 없음 (수주 전 수동 확인 절차로 대체, `templates/legal_notes.md`)
+- 샘플 코드 자체는 robots.txt를 확인하지 않음. 수주 전 `tools/check_robots.py`로 점검하는 절차로 대체 (`templates/legal_notes.md`)
 
 ## 원칙
 - 개인정보/로그인 필요/약관 위반 소지 크롤링은 수주하지 않음

@@ -17,6 +17,9 @@
    - Chrome 관련(04): Chrome 최신 버전 필요. 구버전 chromedriver가 PATH에 있으면 삭제 (Selenium 4.6+ 는 자동 매칭)
 6. 약관·robots.txt 준수 (templates/legal_notes.md): 제작자는 수주 전 확인을 수행하고, 범위를 벗어난 사용은 이용자 책임
 
+## 납품 키트
+`templates/deliver_kit/`에 `run.bat`(Windows 실행 파일)과 고객용 `README_납품용.md`(채워서 전달) 양식이 있음. **`run.bat`은 Windows에서 아직 검증하지 못했으므로 납품 전 깨끗한 PC에서 확인할 것.**
+
 ## run.bat 예시 (Windows)
 ```bat
 @echo off
