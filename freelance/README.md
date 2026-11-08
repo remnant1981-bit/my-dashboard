@@ -12,6 +12,7 @@
 | `samples/03_scheduled_notify.py` | 주기 확인 + 변경 감지 (HTTP오류 오탐 방지·selector·실패알림 1회) | `tests/` 단위 5건 |
 | `samples/04_dynamic_scraper_selenium.py` | JS 동적 페이지 + 페이지 넘김 (필드 선택자 외부화) | `tests/` 로컬서버+실제 Chrome 통합 2건 + 파서 1건 |
 | `demo/` | **한글 데이터 데모 2종** (위키백과 표 수집·정제·검증, 지점 매출 취합) + 결과 미리보기 이미지 | 실사이트 실행 + `tests/test_demo.py` 7건 |
+| `exposure/` | 노출·전환용 콘텐츠: 크몽 상세페이지 개선안(시장 관찰·제목/키워드·본문·이미지 구성), 숨고 업종별 견적 응답 6종+거절 템플릿, 사례형 글 2편 | 스니펫 근거(크몽 상위 10개), 수치는 데모 직접 실행값 |
 | `sample_output/` | 샘플 실행 결과 (01 실사이트 2페이지 20건, 02 취합) | 깨끗한 venv에서 직접 실행 |
 | `templates/` | 견적서·문진표·면책 문구, 납품 가이드, 법적 유의, 알림 구현 예시 | 문서 |
 | `listing_kmong.md` / `listing_soomgo.md` | 상품·프로필 초안 | 본인 검토 필요 |
