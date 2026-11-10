@@ -1483,8 +1483,7 @@ window.SMG_DATA_EN = {
     "WIKA",
     "REXA",
     "GE",
-    "ILLICA Group",
-    "Bureau Veritas"
+    "ILLICA Group"
   ],
   "partnerCards": [
     {
