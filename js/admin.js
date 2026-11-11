@@ -440,7 +440,8 @@
         { k: 'downloadGate', label: '사용 방식', type: 'select', opts: () => [['off', '끄기 (바로 다운로드)'], ['optional', '선택 (입력 또는 건너뛰기)'], ['required', '필수 (입력해야 다운로드)']], hint: '입력 내용은 문의 메일·시트로 "자료 다운로드" 유형으로 접수됨 (Web3Forms 건수에 포함)' }
       ], s);
       formCard(el, '회사·공장 소개 영상', '유튜브에 영상을 올린 뒤 주소를 입력 (비공개 말고 "일부 공개" 또는 "공개")', [
-        { k: 'videoUrl', label: '유튜브 주소', full: true, ph: 'https://www.youtube.com/watch?v=XXXXXXXXXXX' },
+        { k: 'videoUrl', label: '유튜브 주소 (국문 페이지)', full: true, ph: 'https://www.youtube.com/watch?v=XXXXXXXXXXX' },
+        { k: 'videoUrlEn', label: '유튜브 주소 (영문 페이지, 비우면 국문 영상 사용)', full: true, ph: 'https://www.youtube.com/watch?v=XXXXXXXXXXX' },
         { k: 'videoTitle', label: '영상 제목 (국문)', full: true, ph: '예: SMG 시흥 공장 소개' }, { k: 'videoTitleEn', label: '영상 제목 (영문)', full: true, ph: 'e.g. SMG Siheung factory tour' },
         { k: 'videoOnHome', label: '메인 화면에도 표시 (기본: 회사소개 페이지)', type: 'check', full: true }
       ], s);
