@@ -1018,3 +1018,19 @@ a[href^="mailto:"]{--mail:#c81e15}
 .cmp-entry{min-height:24px;padding:2px 0;line-height:20px}
 /* 홈 히어로: JS가 그리기 전 정적 상태의 높이를 예약해 레이아웃 이동 방지 (모바일만, 데스크톱은 100svh) */
 @media (max-width:640px){.hero.hero-pre{min-height:700px}}
+
+/* ---- 메인 히어로 홍보영상 카드 (우측 소형, 누르면 레이어 플레이어) ---- */
+.hero-video{display:block;width:100%;max-width:420px;margin-top:22px;text-align:left;color:#fff;border-radius:16px;overflow:hidden;background:rgba(13,17,23,.55);border:1px solid rgba(255,255,255,.22);box-shadow:0 18px 50px rgba(0,0,0,.35);backdrop-filter:blur(6px);transition:transform .25s,border-color .25s}
+.hero-video:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.5)}
+.hero-video:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.hv-thumb{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;background:#0d1117}
+.hv-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.hv-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:46px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))}
+.hv-cap{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:11px 14px}
+.hv-cap b{font-size:15px;font-weight:700}
+.hv-cap small{font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap}
+@media (min-width:1200px){.hero-video{position:absolute;right:0;bottom:196px;margin:0;width:clamp(320px,27vw,420px);max-width:none}}
+@media (max-width:640px){.hero-video{max-width:none;margin-top:12px;display:grid;grid-template-columns:132px 1fr;align-items:center;border-radius:12px}.hv-play{width:38px;height:27px}.hv-cap{flex-direction:column;align-items:flex-start;gap:2px;padding:8px 12px}.hv-cap b{font-size:14.5px}}
+.yt-modal .modal-box{max-width:1000px;padding:0;background:#000;overflow:visible;border-radius:14px}
+.yt-modal .yt{max-width:none;border-radius:14px}
+.yt-modal .modal-x{right:-4px;top:-44px;color:#fff}
