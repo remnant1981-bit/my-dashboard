@@ -84,10 +84,10 @@
     { href: 'contact.html', label: t('견적문의', 'Contact'), sub: [] }
   ];
   const langHref = () => { const pid = document.body.dataset.pid; const f = pid ? 'product/' + pid + '.html' : (location.pathname.split('/').pop() || 'index.html') + location.search; return EN ? f : 'en/' + f; };
-  const langSw = (cls) => `<a class="lang ${cls || ''}" href="${langHref()}" hreflang="${EN ? 'ko' : 'en'}" lang="${EN ? 'ko' : 'en'}" aria-label="${EN ? '한국어' : 'English'}"><b class="${EN ? '' : 'on'}">KO</b><i></i><b class="${EN ? 'on' : ''}">EN</b></a>`;
+  const langSw = (cls) => `<a class="lang ${cls || ''}" href="${langHref()}" hreflang="${EN ? 'ko' : 'en'}" lang="${EN ? 'ko' : 'en'}" title="${EN ? '한국어' : 'English'}"><b class="${EN ? '' : 'on'}">KO</b><i></i><b class="${EN ? 'on' : ''}">EN</b></a>`;
 
   function logo() {
-    return `<a class="logo" href="${L('index.html')}" aria-label="${esc(D.company.name)} ${t('홈', 'Home')}"><img class="logo-img" src="assets/logo-mark.svg" alt="${esc(D.company.brand)}" width="72" height="34"><span class="logo-txt"><b>${esc(D.company.name.replace('주식회사 ', ''))}</b><small>${esc(D.company.brandSub)}</small></span></a>`;
+    return `<a class="logo" href="${L('index.html')}" title="${t('홈으로', 'Home')}"><img class="logo-img" src="assets/logo-mark.svg" alt="${esc(D.company.brand)}" width="72" height="34"><span class="logo-txt"><b>${esc(D.company.name.replace('주식회사 ', ''))}</b><small>${esc(D.company.brandSub)}</small></span></a>`;
   }
 
   /* ---------- Header / Footer ---------- */
@@ -130,9 +130,9 @@
     f.className = 'ftr';
     f.innerHTML = `<div class="container"><div class="ftr-top">
       <div>${logo()}<p style="max-width:340px">${esc(D.about.title)}<br>${t('1990년 설립 이래 온도센서·히터·피드스루 전문 제조기업', 'Specialist manufacturer of temperature sensors, heaters and feedthroughs since 1990')}</p></div>
-      <div><h5>${t('제품', 'Products')}</h5><ul>${D.categories.map((x) => `<li><a href="${L('products.html?cat=' + x.id)}">${esc(x.name)}</a></li>`).join('')}</ul></div>
-      <div><h5>${t('회사', 'Company')}</h5><ul><li><a href="${L('about.html')}">${t('회사소개', 'About SMG')}</a></li><li><a href="${L('about.html#history')}">${t('연혁', 'History')}</a></li><li><a href="${L('applications.html')}">${t('적용분야', 'Applications')}</a></li><li><a href="${L('support.html#news')}">${t('공지사항', 'News')}</a></li><li><a href="${L('support.html#downloads')}">${t('자료실', 'Downloads')}</a></li></ul></div>
-      <div><h5>${t('고객센터', 'Contact')}</h5><ul><li><a href="${telHref(c.tel)}" style="font-size:22px;font-weight:800;color:#fff">${esc(c.tel)}</a></li><li>FAX ${esc(c.fax)}</li><li><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></li><li>${esc(c.hours)}</li></ul></div>
+      <div><div class="fh">${t('제품', 'Products')}</div><ul>${D.categories.map((x) => `<li><a href="${L('products.html?cat=' + x.id)}">${esc(x.name)}</a></li>`).join('')}</ul></div>
+      <div><div class="fh">${t('회사', 'Company')}</div><ul><li><a href="${L('about.html')}">${t('회사소개', 'About SMG')}</a></li><li><a href="${L('about.html#history')}">${t('연혁', 'History')}</a></li><li><a href="${L('applications.html')}">${t('적용분야', 'Applications')}</a></li><li><a href="${L('support.html#news')}">${t('공지사항', 'News')}</a></li><li><a href="${L('support.html#downloads')}">${t('자료실', 'Downloads')}</a></li></ul></div>
+      <div><div class="fh">${t('고객센터', 'Contact')}</div><ul><li><a href="${telHref(c.tel)}" style="font-size:22px;font-weight:800;color:#fff">${esc(c.tel)}</a></li><li>FAX ${esc(c.fax)}</li><li><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></li><li>${esc(c.hours)}</li></ul></div>
       </div><div class="ftr-bot"><address><span>${esc(c.name)}</span>${c.ceo ? `<span>${t('대표', 'CEO')} ${esc(c.ceo)}</span>` : ''}${c.bizNo ? `<span>${t('사업자등록번호', 'Business Reg. No.')} ${esc(c.bizNo)}</span>` : ''}<br><span>${esc(c.address)}</span><span>TEL ${esc(c.tel)}</span><span>FAX ${esc(c.fax)}</span></address>
       <div><a href="${L('privacy.html')}">${t('개인정보처리방침', 'Privacy Policy')}</a> · <a href="admin.html" rel="nofollow">${t('관리자', 'Admin')}</a><br>© ${new Date().getFullYear()} ${esc(c.nameEn)} All rights reserved.</div></div></div>`;
     document.body.appendChild(f);
@@ -163,7 +163,7 @@
     const cat = D.categories.find((c) => c.id === p.category);
     return `<a class="prod-card" href="${L('product/' + encodeURIComponent(p.id) + '.html')}">${p.certs && p.certs.length ? `<span class="chip">${t('방폭/선급 인증', 'Ex / Marine certified')}</span>` : ''}
       <div class="img"><img ${rimg(p.images[0], '(max-width:640px) 66vw, 320px')} alt="${esc(p.code + ' ' + p.name)}" loading="lazy" decoding="async"></div>
-      <div class="body"><span class="tag" style="color:${esc(cat && cat.color || '')}">${esc(cat ? cat.nameEn : '')}</span><h3>${esc(p.code)}</h3><div class="en">${EN ? esc(p.name) : `${esc(p.nameKo)} · ${esc(p.name)}`}</div><p>${esc(p.summary)}</p><span class="more">${t('자세히 보기', 'View details')} ${I.arrow}</span></div></a>`;
+      <div class="body"><span class="tag" style="color:color-mix(in srgb,${esc(cat && cat.color || '#667085')} 65%,#000)">${esc(cat ? cat.nameEn : '')}</span><h3>${esc(p.code)}</h3><div class="en">${EN ? esc(p.name) : `${esc(p.nameKo)} · ${esc(p.name)}`}</div><p>${esc(p.summary)}</p><span class="more">${t('자세히 보기', 'View details')} ${I.arrow}</span></div></a>`;
   }
   window.SMG.prodCard = prodCard;
 
@@ -222,11 +222,15 @@
   P.home = function () {
     const h = D.hero;
     const slides = (h.images && h.images.length ? h.images : [h.image]).filter(Boolean);
-    $('#hero').innerHTML = `${slides.map((s, i) => `<div class="hero-bg${i ? '' : ' on'}" style="background-image:url('${esc(s)}')"></div>`).join('')}<div class="grid-lines"></div>${slides.length > 1 ? `<div class="hero-dots" role="tablist" aria-label="${t('메인 이미지', 'Hero images')}">${slides.map((_, i) => `<button class="${i ? '' : 'on'}" aria-label="${i + 1}"><i></i></button>`).join('')}</div>` : ''}
+    const heroEl = $('#hero'), keepBg = heroEl.querySelector('.hero-bg.on'), reuse = !!(keepBg && slides[0] && (keepBg.getAttribute('style') || '').includes(slides[0]));
+    heroEl.classList.remove('hero-pre');
+    if (reuse) keepBg.remove();
+    heroEl.innerHTML = `${slides.map((s, i) => (i === 0 && reuse ? '' : `<div class="hero-bg${i ? '' : ' on'}" style="background-image:url('${esc(s)}')"></div>`)).join('')}<div class="grid-lines"></div>${slides.length > 1 ? `<div class="hero-dots" role="group" aria-label="${t('메인 이미지', 'Hero images')}">${slides.map((_, i) => `<button class="${i ? '' : 'on'}" aria-label="${t('슬라이드', 'Slide')} ${i + 1}"${i ? '' : ' aria-current="true"'}><i></i></button>`).join('')}</div>` : ''}
       <div class="container"><span class="eyebrow">${esc(h.eyebrow)}</span><h1>${esc(h.title)}</h1><p class="lead">${esc(h.subtitle)}</p>
       <div class="hero-cta"><a class="btn btn-primary" href="${L('products.html')}">${esc(h.ctaPrimary)} ${I.arrow}</a><a class="btn btn-ghost" href="${L('contact.html')}">${esc(h.ctaSecondary)}</a><a class="btn btn-ghost" href="${esc(D.settings.catalogPdf)}" download>${I.dl} ${t('카탈로그 PDF', 'Catalog PDF')}</a></div>
       <div class="hero-stats">${D.stats.map((s) => `<div><b data-count="${esc(s.value)}">${esc(s.value)}<em>${esc(s.suffix)}</em></b><span>${esc(s.label)}</span></div>`).join('')}</div></div>
       <div class="scroll-ind">SCROLL</div>`;
+    if (reuse) heroEl.prepend(keepBg);
     $('#cats').innerHTML = D.categories.map((c, i) => `<a class="cat-card rv" href="${L('products.html?cat=' + c.id)}" style="transition-delay:${i * 60}ms;--cc:${esc(c.color || '#e1251b')}"><span class="arrow">${I.arrowUR}</span><div class="img"><img ${rimg(c.image, '(max-width:640px) 90vw, 400px')} alt="${esc(c.name)}" loading="lazy" decoding="async"></div><div class="body"><span class="no">0${i + 1} — ${t('제품 ', '')}${D.products.filter((p) => p.category === c.id).length}${t('종', ' products')}</span><h3>${EN ? '' : `<small>${esc(c.nameEn)}</small>`}${esc(c.name)}</h3><p>${esc(c.desc)}</p></div></a>`).join('');
     const a = D.about;
     $('#about').innerHTML = `<div class="media rv"><img ${rimg(a.image, '(max-width:900px) 100vw, 600px')} alt="${t('에스엠지 사옥', 'SMG headquarters')}" loading="lazy" decoding="async"><div class="badge"><b>${new Date().getFullYear() - D.company.founded}+</b><span>Years of Manufacturing</span></div></div>
@@ -297,7 +301,7 @@
     $('#pd-title').textContent = dispName(p);
     $('#pd').innerHTML = `<div class="pd-gal"><div class="pd-main" id="pd-main" title="${t('클릭하여 확대', 'Click to enlarge')}"><img src="${esc(p.images[0])}" alt="${esc(p.code)}"></div>
       ${p.images.length > 1 ? `<div class="pd-thumbs">${p.images.map((im, i) => `<button class="${i ? '' : 'on'}" data-src="${esc(im)}" aria-label="${t('이미지', 'Image')} ${i + 1}"><img src="${esc(thumbSrc(im))}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div>` : ''}</div>
-      <div class="pd-info"><span class="chip" style="background:color-mix(in srgb,${esc(cat.color || '#e1251b')} 12%,#fff);color:${esc(cat.color || '#e1251b')}">${esc(cat.name || '')}</span><div class="code" style="margin-top:14px">${esc(p.code)}</div><div class="nm">${esc(dispName(p))}</div>${EN ? '' : `<div class="en">${esc(p.name)}</div>`}
+      <div class="pd-info"><span class="chip" style="background:color-mix(in srgb,${esc(cat.color || '#e1251b')} 12%,#fff);color:color-mix(in srgb,${esc(cat.color || '#e1251b')} 80%,#000)">${esc(cat.name || '')}</span><div class="code" style="margin-top:14px">${esc(p.code)}</div><div class="nm">${esc(dispName(p))}</div>${EN ? '' : `<div class="en">${esc(p.name)}</div>`}
       <p class="sum">${esc(p.summary)}</p>
       ${p.features && p.features.length ? `<div class="pd-block"><h3>Features</h3><ul class="checks">${p.features.map((f) => `<li>${esc(f)}</li>`).join('')}</ul></div>` : ''}
       ${p.applications ? `<div class="pd-block"><h3>Application</h3><p>${esc(p.applications)}</p></div>` : ''}

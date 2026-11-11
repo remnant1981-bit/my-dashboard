@@ -20,6 +20,7 @@ T = {
  '1990년 성실전자로 시작해 35년간 온도센서·히터·피드스루 한 길을 걸어온 전문 제조기업입니다.': 'Founded in 1990 as Sungsil Electronics, SMG has specialized in temperature sensors, heaters and feedthroughs for 35 years.',
  '35년의 기술 축적': '35 years of expertise',
  'Honeywell Process Solutions 공식 인증 대리점(APAC), WIKA 판매대리점, REXA 파트너로서 글로벌 계측·제어 솔루션을 함께 공급합니다.': 'As an authorized Honeywell Process Solutions distributor (APAC), WIKA distributor and REXA partner, we supply global measurement and control solutions.',
+ '온도센서 · 히터 · 피드스루 전문 제조기업 SMG 주식회사 에스엠지': 'Temperature sensors, heaters and feedthroughs manufacturer SMG Co., Ltd.',
  '글로벌 파트너십': 'Global partnerships', '기업 정보': 'Company information', '기업개요': 'Overview',
  '방폭(ATEX·IECEx·KCs·KTL), 선급(BV), ASME PTC 19.3, UL 및 ISO 9001·14001': 'Explosion-proof (ATEX · IECEx · KCs · KTL), marine (BV), ASME PTC 19.3, UL and ISO 9001 · 14001',
  '연혁': 'History', '오시는 길': 'Location', '인증 현황': 'Certifications', '인증현황': 'Certifications', '파트너': 'Partners', '회사소개': 'About SMG', '회사소개 메뉴': 'Company menu',
@@ -49,18 +50,18 @@ T = {
  '개인정보처리방침': 'Privacy Policy',
 }
 META = {
- 'index': ('SMG Co., Ltd. | Temperature Sensors · Heaters · Feedthroughs Manufacturer', 'Since 1990, SMG manufactures temperature sensors (RTD/TC), thermowells, heaters, pressure transmitters, explosion-proof cable bushings and cryogenic feedthroughs for power, shipbuilding (LNG/LH₂), semiconductor and defense industries.'),
+ 'index': ('SMG Co., Ltd. | Temperature Sensors, Heaters, Feedthroughs', 'Since 1990, SMG manufactures RTD/TC temperature sensors, thermowells, heaters, pressure transmitters, cable bushings and cryogenic feedthroughs.'),
  'about': ('About SMG | SMG Co., Ltd.', 'SMG Co., Ltd. company overview, message, history, global partners, certifications and location.'),
  'products': ('Products | SMG Co., Ltd.', 'Temperature sensors (RTD/TC), thermowells, heaters, pressure transmitters, cable bushings and feedthroughs.'),
  'product': ('Product details | SMG Co., Ltd.', 'SMG product specifications, installation and certifications.'),
  'applications': ('Applications | SMG Co., Ltd.', 'Power generation, shipbuilding LNG/LH₂, petrochemical, semiconductor & display, defense and aerospace applications.'),
- 'support': ('Support | SMG Co., Ltd.', 'News, catalog downloads and FAQ.'),
- 'notice': ('News | SMG Co., Ltd.', 'News and announcements from SMG Co., Ltd.'),
+ 'support': ('Support | SMG Co., Ltd.', 'SMG news, catalog downloads and frequently asked questions. Send quotation and technical inquiries from the Contact page.'),
+ 'notice': ('News | SMG Co., Ltd.', 'Latest news and announcements from SMG Co., Ltd., including new products and catalog releases.'),
  'compare': ('Compare products | SMG Co., Ltd.', 'Compare specifications of SMG sensors, heaters and feedthroughs side by side.'),
  'cases': ('References | SMG Co., Ltd.', 'SMG supply references and application cases.'),
- 'contact': ('Contact | SMG Co., Ltd.', 'Online inquiry for quotations, technical consultation and samples.'),
+ 'contact': ('Contact | SMG Co., Ltd.', 'Send an online inquiry for quotations, technical consultation or samples. Tell us your operating conditions and specifications.'),
  'privacy': ('Privacy Policy | SMG Co., Ltd.', 'SMG Co., Ltd. privacy policy.'),
- '404': ('Page not found | SMG Co., Ltd.', 'Page not found.'),
+ '404': ('Page not found | SMG Co., Ltd.', 'The page you requested could not be found. Try the home page or the product pages.'),
 }
 PRIVACY_EN = '''<main id="main"><section class="sec"><div class="container prose" style="max-width:860px">
 <p><b data-co="name"></b> (the "Company") protects the personal information of data subjects in accordance with the Personal Information Protection Act of Korea and discloses this privacy policy.</p>

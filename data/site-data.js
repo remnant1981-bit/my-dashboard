@@ -1495,8 +1495,7 @@ window.SMG_DEFAULT_DATA = {
     "WIKA",
     "REXA",
     "GE",
-    "ILLICA Group",
-    "Bureau Veritas"
+    "ILLICA Group"
   ],
   "partnerCards": [
     {

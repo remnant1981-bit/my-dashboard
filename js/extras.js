@@ -75,7 +75,7 @@
       const bgs = $$('#hero .hero-bg'), dots = $$('#hero .hero-dots button');
       if (bgs.length > 1) {
         let i = 0, tm;
-        const show = (k) => { i = (k + bgs.length) % bgs.length; bgs.forEach((b, j) => b.classList.toggle('on', j === i)); dots.forEach((d, j) => d.classList.toggle('on', j === i)); };
+        const show = (k) => { i = (k + bgs.length) % bgs.length; bgs.forEach((b, j) => b.classList.toggle('on', j === i)); dots.forEach((d, j) => { d.classList.toggle('on', j === i); if (j === i) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current'); }); };
         const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
         const loop = () => { clearInterval(tm); if (!reduce) tm = setInterval(() => show(i + 1), 6000); };
         dots.forEach((d, j) => (d.onclick = () => { show(j); loop(); }));
