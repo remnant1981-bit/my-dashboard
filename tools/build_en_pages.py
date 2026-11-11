@@ -14,7 +14,7 @@ T = {
  '도면 한 장이면 충분합니다.': 'Just send us a drawing.', '맞춤형 센서·히터를 제작해 드립니다.': 'We build custom sensors and heaters.',
  '발전기 권선 감시부터 -253℃ LNG·LH₂ 극저온 피드스루, 반도체 메탈 척 히터, 방산·항공우주 히터까지.': 'From generator winding monitoring to -253℃ LNG · LH₂ cryogenic feedthroughs, semiconductor metal chuck heaters and defense & aerospace heaters.',
  '사양 검토부터 도면 협의, 인증 대응까지 엔지니어가 직접 답변드립니다.': 'Our engineers support you from specification review and drawings to certification.',
- '산업 핵심 설비에 적용되는': 'Engineered for', '전체 보기': 'View all', '전체 제품 보기': 'All products', '제품 더 보기': 'More products',
+ '산업 핵심 설비에 적용되는': 'Engineered for', '전체 보기': 'View all', '소식 전체 보기': 'View all news', '전체 제품 보기': 'All products', '제품 더 보기': 'More products',
  '좌우로 넘겨보세요 →': 'Swipe to see more →', '주요 제품': 'Featured products', '카탈로그 다운로드': 'Download catalog', '현장이 요구하는 정밀함,': 'Precision demanded by the field —',
  # about
  '1990년 성실전자로 시작해 35년간 온도센서·히터·피드스루 한 길을 걸어온 전문 제조기업입니다.': 'Founded in 1990 as Sungsil Electronics, SMG has specialized in temperature sensors, heaters and feedthroughs for 35 years.',
