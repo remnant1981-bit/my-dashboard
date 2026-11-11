@@ -26,7 +26,17 @@
     /* ---------- 1. Company / factory video (YouTube, loads only on click) ---------- */
     const ytId = (u) => { const m = String(u || '').match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([\w-]{11})/); return m ? m[1] : ''; };
     const vid = ytId((EN && st.videoUrlEn) || st.videoUrl); // 영문 페이지는 영문 영상이 있으면 그것을, 없으면 국문 영상을 사용
-    const anchor = page === 'about' ? ($('#overview') && $('#overview').closest('section')) : page === 'home' && st.videoOnHome ? ($('#about') && $('#about').closest('section')) : null;
+    const anchor = page === 'about' ? ($('#overview') && $('#overview').closest('section')) : null;
+    // 메인 화면: 히어로 우측의 작은 카드 (모바일은 버튼 아래). 누르면 큰 플레이어가 레이어로 열림
+    const heroBox = page === 'home' && st.videoOnHome ? $('#hero .container') : null;
+    if (vid && heroBox) {
+      const title = (EN ? st.videoTitleEn : st.videoTitle) || t('SMG 회사·공장 소개', 'SMG company & factory');
+      const card = document.createElement('button'); card.type = 'button'; card.className = 'hero-video'; card.setAttribute('aria-label', t('영상 재생', 'Play video') + ': ' + title);
+      card.innerHTML = `<span class="hv-thumb"><img src="https://i.ytimg.com/vi/${vid}/hqdefault.jpg" alt="" width="480" height="360" decoding="async"><svg class="hv-play" viewBox="0 0 68 48" aria-hidden="true"><path d="M66.5 7.7a8.5 8.5 0 0 0-6-6C55.2.3 34 .3 34 .3s-21.2 0-26.5 1.4a8.5 8.5 0 0 0-6 6C.1 13 .1 24 .1 24s0 11 1.4 16.3a8.5 8.5 0 0 0 6 6C12.8 47.7 34 47.7 34 47.7s21.2 0 26.5-1.4a8.5 8.5 0 0 0 6-6C67.9 35 67.9 24 67.9 24s0-11-1.4-16.3z" fill="#e1251b"/><path d="M27 34l18-10-18-10z" fill="#fff"/></svg></span><span class="hv-cap"><b>${esc(title)}</b><small>${t('눌러서 재생', 'Click to play')}</small></span>`;
+      const cta = $('.hero-cta', heroBox);
+      if (cta) cta.after(card); else heroBox.appendChild(card);
+      card.onclick = () => modal(`<div class="yt on"><iframe src="https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0" title="${esc(title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`, 'yt-modal');
+    }
     if (vid && anchor) {
       const title = (EN ? st.videoTitleEn : st.videoTitle) || t('SMG 회사·공장 소개', 'SMG company & factory');
       const sec = document.createElement('section'); sec.className = 'sec video-sec';
