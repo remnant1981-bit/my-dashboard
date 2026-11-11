@@ -25,7 +25,7 @@
 
     /* ---------- 1. Company / factory video (YouTube, loads only on click) ---------- */
     const ytId = (u) => { const m = String(u || '').match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([\w-]{11})/); return m ? m[1] : ''; };
-    const vid = ytId(st.videoUrl);
+    const vid = ytId((EN && st.videoUrlEn) || st.videoUrl); // 영문 페이지는 영문 영상이 있으면 그것을, 없으면 국문 영상을 사용
     const anchor = page === 'about' ? ($('#overview') && $('#overview').closest('section')) : page === 'home' && st.videoOnHome ? ($('#about') && $('#about').closest('section')) : null;
     if (vid && anchor) {
       const title = (EN ? st.videoTitleEn : st.videoTitle) || t('SMG 회사·공장 소개', 'SMG company & factory');
