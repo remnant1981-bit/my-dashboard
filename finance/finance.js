@@ -302,6 +302,21 @@
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' }));
     a.download = 'finance-backup-' + today() + '.json'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
+  $('#btn-csv').addEventListener('click', function () {
+    if (!state.loans.length) { alert('내보낼 대출이 없음'); return; }
+    var q = function (v) { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var out = [['대출명', '금융기관', '구분', '회차', '날짜', '납부액', '원금', '이자', '중도상환', '잔액'].join(',')];
+    state.loans.forEach(function (L) {
+      schedule(L, L.prepays).forEach(function (r) {
+        out.push([L.name, L.lender, '스케줄', r.k, r.date, r.interest + r.principal, r.principal, r.interest, r.prepay, r.balance].map(q).join(','));
+      });
+      (L.actuals || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (a) {
+        out.push([L.name, L.lender, '실제납부', '', a.date, a.amount, '', a.interest == null ? '' : a.interest, '', ''].map(q).join(','));
+      });
+    });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'finance-' + today() + '.csv'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
   $('#file-import').addEventListener('change', function () {
     var f = this.files[0], inp = this; if (!f) return;
     var r = new FileReader();
