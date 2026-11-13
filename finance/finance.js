@@ -32,6 +32,10 @@
   /* ---------- 상환 스케줄 엔진 ----------
      type: equal(원리금균등) | principal(원금균등) | bullet(만기일시), grace: 거치기간(개월, 이자만 납부)
      prepays: [{date, amount, mode:'term'(기간단축)|'payment'(상환액감소)}] */
+  function daysBetween(a, b) {
+    var f = function (x) { return Date.UTC(+x.slice(0, 4), +x.slice(5, 7) - 1, +x.slice(8, 10)); };
+    return Math.round((f(b) - f(a)) / 86400000);
+  }
   function pmtEqual(bal, r, n) {
     if (n <= 0) return bal;
     return r === 0 ? Math.round(bal / n) : Math.round(bal * r / (1 - Math.pow(1 + r, -n)));
@@ -45,8 +49,8 @@
       var date = addMonths(L.start, k, L.payDay);
       var rk = L.rate; chg.forEach(function (c) { if (c.date <= prevDate) rk = c.rate; });
       if (rk / 1200 !== r) { r = rk / 1200; if (L.type === 'equal') pmt = pmtEqual(bal, r, Math.max(1, n - Math.max(k - 1, g))); }
-      prevDate = date;
-      var interest = Math.round(bal * r), prin;
+      var pd = prevDate; prevDate = date;
+      var interest = L.calc === 'daily' ? Math.floor(bal * rk / 100 * daysBetween(pd, date) / 365) : Math.round(bal * r), prin;
       if (L.type === 'bullet') prin = 0;
       else if (k <= g) prin = 0;
       else if (L.type === 'principal') prin = Math.min(bal, unit);
@@ -166,7 +170,7 @@
       return '<span>' + p.date + ' ' + amt(p.amount) + ' (' + (p.mode === 'term' ? '기간단축' : '상환액감소') + ') <a href="#" data-act="del-pre" data-id="' + L.id + '" data-i="' + i + '">삭제</a></span>';
     }).join('');
     return '<article class="loan" data-id="' + L.id + '">' +
-      '<div class="loan-h"><div><b>' + esc(L.name) + '</b><span class="tag">' + TYPE[L.type] + '</span>' + (s.bal <= 0 ? '<span class="tag done">완납</span>' : '') +
+      '<div class="loan-h"><div><b>' + esc(L.name) + '</b><span class="tag">' + TYPE[L.type] + '</span>' + (L.calc === 'daily' ? '<span class="tag">일할</span>' : '') + (s.bal <= 0 ? '<span class="tag done">완납</span>' : '') +
       '<div class="hint">' + esc(L.lender) + ' · 연 ' + L.rate + '%' + ((L.rates || []).length ? ' → 현재 ' + curRate(L) + '%' : '') + ' · ' + L.term + '개월' + (L.grace ? ' (거치 ' + L.grace + ')' : '') + ' · 매월 ' + L.payDay + '일</div></div>' +
       '<div class="row"><button class="b b-line b-sm" data-act="edit-loan" data-id="' + L.id + '">수정</button></div></div>' +
       '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
@@ -209,11 +213,12 @@
       '<div class="g2">' + field('대출 원금(원)', 'principal', L.principal, 'type="number" min="1" required inputmode="numeric"') + field('연 이율(%)', 'rate', L.rate, 'type="number" min="0" step="0.01" required inputmode="decimal"') + '</div>' +
       '<div class="g2">' + field('대출 기간(개월)', 'term', L.term, 'type="number" min="1" max="600" required inputmode="numeric"') + field('거치 기간(개월)', 'grace', L.grace, 'type="number" min="0" inputmode="numeric"') + '</div>' +
       '<label class="f">상환 방식<select name="type">' + Object.keys(TYPE).map(function (k) { return '<option value="' + k + '"' + (L.type === k ? ' selected' : '') + '>' + TYPE[k] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">이자 계산 방식<select name="calc"><option value="month"' + (L.calc !== 'daily' ? ' selected' : '') + '>월 단위(연이율÷12)</option><option value="daily"' + (L.calc === 'daily' ? ' selected' : '') + '>일할계산(실제 일수/365, 원 미만 절사)</option></select></label>' +
       '<div class="g2">' + field('대출 실행일', 'start', L.start, 'type="date" required') + field('매월 납부일', 'payDay', L.payDay, 'type="number" min="1" max="31" required inputmode="numeric"') + '</div>' +
       '<div class="dact">' + (id ? '<button type="button" class="b b-del" data-del>삭제</button>' : '') + '<button type="button" class="b b-line" data-close>취소</button><button class="b b-pri">저장</button></div></form>',
       function (fd) {
         var o = { id: L.id || uid(), name: fd.get('name').trim(), lender: fd.get('lender').trim(), principal: num(fd.get('principal')), rate: num(fd.get('rate')), term: Math.round(num(fd.get('term'))),
-          grace: Math.round(num(fd.get('grace'))), type: fd.get('type'), start: fd.get('start'), payDay: Math.min(31, Math.max(1, Math.round(num(fd.get('payDay'))))), prepays: L.prepays || [], actuals: L.actuals || [], rates: L.rates || [] };
+          grace: Math.round(num(fd.get('grace'))), type: fd.get('type'), calc: fd.get('calc') === 'daily' ? 'daily' : 'month', start: fd.get('start'), payDay: Math.min(31, Math.max(1, Math.round(num(fd.get('payDay'))))), prepays: L.prepays || [], actuals: L.actuals || [], rates: L.rates || [] };
         if (!o.name || o.principal <= 0 || o.term < 1) return false;
         if (id) state.loans = state.loans.map(function (x) { return x.id === id ? o : x; }); else state.loans.push(o);
         save(); render();
@@ -333,7 +338,7 @@
   });
   function clean(x) {
     return { id: String(x.id || uid()), name: String(x.name || ''), lender: String(x.lender || ''), principal: Math.max(1, num(x.principal)), rate: Math.max(0, num(x.rate)), term: Math.min(600, Math.max(1, Math.round(num(x.term)))),
-      grace: Math.max(0, Math.round(num(x.grace))), type: TYPE[x.type] ? x.type : 'equal', start: /^\d{4}-\d{2}-\d{2}$/.test(x.start) ? x.start : today(), payDay: Math.min(31, Math.max(1, Math.round(num(x.payDay)) || 1)),
+      grace: Math.max(0, Math.round(num(x.grace))), type: TYPE[x.type] ? x.type : 'equal', calc: x.calc === 'daily' ? 'daily' : 'month', start: /^\d{4}-\d{2}-\d{2}$/.test(x.start) ? x.start : today(), payDay: Math.min(31, Math.max(1, Math.round(num(x.payDay)) || 1)),
       prepays: (x.prepays || []).map(function (p) { return { date: String(p.date), amount: num(p.amount), mode: p.mode === 'payment' ? 'payment' : 'term' }; }),
       rates: (x.rates || []).map(function (c) { return { date: String(c.date), rate: Math.max(0, num(c.rate)) }; }),
       actuals: (x.actuals || []).map(function (a) { return { date: String(a.date), amount: num(a.amount), interest: a.interest == null ? null : num(a.interest) }; }) };
