@@ -40,8 +40,13 @@
     var n = L.term, g = Math.min(L.grace || 0, n - 1), r = L.rate / 1200, bal = L.principal, rows = [];
     var pre = (prepays || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }), pi = 0;
     var pmt = pmtEqual(bal, r, n - g), unit = Math.round(bal / Math.max(1, n - g));
+    var chg = (L.rates || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }), prevDate = L.start;
     for (var k = 1; k <= n && bal > 0; k++) {
-      var date = addMonths(L.start, k, L.payDay), interest = Math.round(bal * r), prin;
+      var date = addMonths(L.start, k, L.payDay);
+      var rk = L.rate; chg.forEach(function (c) { if (c.date <= prevDate) rk = c.rate; });
+      if (rk / 1200 !== r) { r = rk / 1200; if (L.type === 'equal') pmt = pmtEqual(bal, r, Math.max(1, n - Math.max(k - 1, g))); }
+      prevDate = date;
+      var interest = Math.round(bal * r), prin;
       if (L.type === 'bullet') prin = 0;
       else if (k <= g) prin = 0;
       else if (L.type === 'principal') prin = Math.min(bal, unit);
@@ -137,6 +142,23 @@
       }).join('') + '</tbody></table></div>' : '') + '</details>';
   }
 
+  function curRate(L) {
+    var t = today(), r = L.rate;
+    (L.rates || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (c) { if (c.date <= t) r = c.rate; });
+    return r;
+  }
+  function ratesHtml(L) {
+    var R = (L.rates || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    return '<details><summary>금리 변경 이력 (' + R.length + '건)</summary><div class="sim">' +
+      '<label class="f">적용 시작일<input type="date" data-c="date" value="' + today() + '"></label>' +
+      '<label class="f">변경 금리(연 %)<input type="number" min="0" step="0.01" data-c="rate" inputmode="decimal"></label>' +
+      '<button class="b b-pri" data-act="add-rate" data-id="' + L.id + '">추가</button></div>' +
+      '<p class="hint">초기 금리 ' + L.rate + '% → 각 적용 시작일 이후 납부 기간부터 새 금리 적용. 원리금균등은 금리 변경 시 월 납부액을 남은 기간 기준으로 재계산함.</p>' +
+      (R.length ? '<div class="tw"><table><thead><tr><th>적용 시작일</th><th>금리</th><th></th></tr></thead><tbody>' + R.map(function (c) {
+        return '<tr><td>' + c.date + '</td><td>' + c.rate + '%</td><td><a href="#" data-act="del-rate" data-id="' + L.id + '" data-d="' + c.date + '" data-m="' + c.rate + '">삭제</a></td></tr>';
+      }).join('') + '</tbody></table></div>' : '') + '</details>';
+  }
+
   function loanCard(x) {
     var L = x.L, s = x.s, pct = Math.min(100, Math.round((1 - s.bal / L.principal) * 100));
     var end = s.rows.length ? s.rows[s.rows.length - 1].date : '-';
@@ -145,7 +167,7 @@
     }).join('');
     return '<article class="loan" data-id="' + L.id + '">' +
       '<div class="loan-h"><div><b>' + esc(L.name) + '</b><span class="tag">' + TYPE[L.type] + '</span>' + (s.bal <= 0 ? '<span class="tag done">완납</span>' : '') +
-      '<div class="hint">' + esc(L.lender) + ' · 연 ' + L.rate + '% · ' + L.term + '개월' + (L.grace ? ' (거치 ' + L.grace + ')' : '') + ' · 매월 ' + L.payDay + '일</div></div>' +
+      '<div class="hint">' + esc(L.lender) + ' · 연 ' + L.rate + '%' + ((L.rates || []).length ? ' → 현재 ' + curRate(L) + '%' : '') + ' · ' + L.term + '개월' + (L.grace ? ' (거치 ' + L.grace + ')' : '') + ' · 매월 ' + L.payDay + '일</div></div>' +
       '<div class="row"><button class="b b-line b-sm" data-act="edit-loan" data-id="' + L.id + '">수정</button></div></div>' +
       '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="kv"><div><span>잔액</span><b>' + amt(s.bal) + '</b></div><div><span>상환율</span><b>' + pct + '% (' + s.paidCnt + '/' + s.rows.length + '회)</b></div>' +
@@ -158,7 +180,7 @@
       '<label class="f">방식<select data-s="mode"><option value="term">기간 단축</option><option value="payment">월 상환액 감소</option></select></label>' +
       '<label class="f">수수료율(%)<input type="number" min="0" step="0.1" value="0" data-s="fee" inputmode="decimal"></label>' +
       '<button class="b b-pri" data-act="sim" data-id="' + L.id + '">계산</button><div class="out" hidden></div></div></details>' +
-      actualsHtml(L, s) +
+      actualsHtml(L, s) + ratesHtml(L) +
       '<details><summary>금리 대환(갈아타기) 비교</summary><div class="sim">' +
       '<label class="f">새 금리(연 %)<input type="number" min="0" step="0.01" data-r="rate" inputmode="decimal"></label>' +
       '<label class="f">대환 비용(원, 중도상환수수료 등)<input type="number" min="0" step="10000" value="0" data-r="fee" inputmode="numeric"></label>' +
@@ -191,7 +213,7 @@
       '<div class="dact">' + (id ? '<button type="button" class="b b-del" data-del>삭제</button>' : '') + '<button type="button" class="b b-line" data-close>취소</button><button class="b b-pri">저장</button></div></form>',
       function (fd) {
         var o = { id: L.id || uid(), name: fd.get('name').trim(), lender: fd.get('lender').trim(), principal: num(fd.get('principal')), rate: num(fd.get('rate')), term: Math.round(num(fd.get('term'))),
-          grace: Math.round(num(fd.get('grace'))), type: fd.get('type'), start: fd.get('start'), payDay: Math.min(31, Math.max(1, Math.round(num(fd.get('payDay'))))), prepays: L.prepays || [], actuals: L.actuals || [] };
+          grace: Math.round(num(fd.get('grace'))), type: fd.get('type'), start: fd.get('start'), payDay: Math.min(31, Math.max(1, Math.round(num(fd.get('payDay'))))), prepays: L.prepays || [], actuals: L.actuals || [], rates: L.rates || [] };
         if (!o.name || o.principal <= 0 || o.term < 1) return false;
         if (id) state.loans = state.loans.map(function (x) { return x.id === id ? o : x; }); else state.loans.push(o);
         save(); render();
@@ -249,7 +271,14 @@
     var act = t.dataset.act, id = t.dataset.id;
     if (act === 'edit-loan') loanForm(id);
     else if (act === 'edit-exp') expForm(id);
-    else if (act === 'add-act') {
+    else if (act === 'add-rate') {
+      var Lr = state.loans.filter(function (x) { return x.id === id; })[0], g = function (n) { return t.closest('.sim').querySelector('[data-c=' + n + ']').value; };
+      if (!g('date') || g('rate') === '') { alert('적용 시작일과 금리를 입력'); return; }
+      Lr.rates = (Lr.rates || []).filter(function (c) { return c.date !== g('date'); }).concat([{ date: g('date'), rate: num(g('rate')) }]); save(); render();
+    } else if (act === 'del-rate') {
+      e.preventDefault(); var Lq = state.loans.filter(function (x) { return x.id === id; })[0];
+      if (confirm('금리 변경 이력을 삭제할까요?')) { Lq.rates = Lq.rates.filter(function (c) { return !(c.date === t.dataset.d && c.rate === +t.dataset.m); }); save(); render(); }
+    } else if (act === 'add-act') {
       var Lx = state.loans.filter(function (x) { return x.id === id; })[0], q = function (n) { return t.closest('.sim').querySelector('[data-a=' + n + ']').value; };
       var am = num(q('amount')); if (!q('date') || am <= 0) { alert('납부일과 납부 총액을 입력'); return; }
       Lx.actuals = (Lx.actuals || []).concat([{ date: q('date'), amount: am, interest: q('interest') === '' ? null : num(q('interest')) }]); save(); render();
@@ -291,6 +320,7 @@
     return { id: String(x.id || uid()), name: String(x.name || ''), lender: String(x.lender || ''), principal: Math.max(1, num(x.principal)), rate: Math.max(0, num(x.rate)), term: Math.min(600, Math.max(1, Math.round(num(x.term)))),
       grace: Math.max(0, Math.round(num(x.grace))), type: TYPE[x.type] ? x.type : 'equal', start: /^\d{4}-\d{2}-\d{2}$/.test(x.start) ? x.start : today(), payDay: Math.min(31, Math.max(1, Math.round(num(x.payDay)) || 1)),
       prepays: (x.prepays || []).map(function (p) { return { date: String(p.date), amount: num(p.amount), mode: p.mode === 'payment' ? 'payment' : 'term' }; }),
+      rates: (x.rates || []).map(function (c) { return { date: String(c.date), rate: Math.max(0, num(c.rate)) }; }),
       actuals: (x.actuals || []).map(function (a) { return { date: String(a.date), amount: num(a.amount), interest: a.interest == null ? null : num(a.interest) }; }) };
   }
   $('#btn-sample').addEventListener('click', function () {
