@@ -1,13 +1,22 @@
-"""수익 시뮬레이션 (몬테카를로). 모든 입력값은 '가정'이며 실측 데이터가 아님.
-사용: python revenue_sim.py [--runs 10000] [--seed 42]
+"""수익 시뮬레이션 (몬테카를로). 수수료를 제외한 입력값은 '가정'이며 실측 데이터가 아님.
+사용: python revenue_sim.py [--runs 10000] [--seed 42]   (모든 표를 한 번에 출력, RESULTS.md 재현용)
 모델(주 단위):
   문의 ~ Poisson(기본문의율 x (1 + 0.12 x 리뷰수), 최대 3배)
   유효문의 = 문의 x (1 - 거절률)            # 로그인/개인정보/약관 위험건 거절
   수주 ~ Binomial(유효문의, min(p0 + 0.02 x 리뷰수, pmax) x (1 + 수주증가율))
   패키지 믹스(기본): STANDARD 50% / DELUXE 30% / PREMIUM 20%  (가격 8/15/30만, 작업일 3/5/7)
   작업은 주당 가용 작업일(capacity)만큼 FIFO로 처리, 대기 작업일이 상한 초과 시 신규 수주 거절
-  완료 시 95% 정산(5%는 환불/분쟁), 정산은 완료 1주 후, 수수료 20%, 원천징수 3.3%
+  완료 시 95% 정산(5%는 환불/분쟁), 정산은 완료 1주 후
   완료 건의 70%가 리뷰를 남김 -> 이후 문의율/전환율 상승
+
+수수료 (크몽 공식 '판매 수수료 정책', 2024.08.20 게시, 2026-11-13 확인):
+  서비스 이용료: 판매 금액 70만원까지 16.4%, 70만~200만원 구간 9.4%, 200만원 초과 구간 4.4%
+  결제망 이용료: 판매 금액의 3.3%
+  부가세: (서비스 이용료 + 결제망 이용료)의 10%
+  -> 70만원 이하 건의 실효 수수료율 = (16.4% + 3.3%) x 1.1 = 21.67%
+  ※ 구간을 건당 판매 금액에 적용한다고 해석함(공식 문구: '판매 금액별'). 카테고리에 따라 비율이 달라질 수 있다고 공지됨.
+     정확한 값은 크몽 [판매 관리 > 수익 관리 > 수익금 계산기]로 확인할 것.
+원천징수 3.3%는 가정임 (개인 판매자 사업소득 기준, 미확인).
 
 체험 패키지(4만원, 작업 1.5일)를 넣을 때의 추가 가정:
   수주증가율(lift) : 체험 덕분에 늘어나는 수주 비율(문의 증가 + 전환 증가의 합산 효과). 늘어난 수주는 전부 체험.
@@ -16,12 +25,16 @@
   -> 이 세 값은 근거 데이터가 없음. 결과는 '체험이 이득이 되려면 수주가 얼마나 늘어야 하는가'를 보는 용도임.
 """
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
-FEE, TAX = 0.20, 0.033
-NET_RATE = (1 - FEE) * (1 - TAX)
+# --- 수수료: 크몽 공식 정책 (단위: 만원) ---
+FEE_TIERS = ((70.0, 0.164), (200.0, 0.094), (float("inf"), 0.044))  # (구간 상한, 서비스 이용료율)
+PG_FEE = 0.033  # 결제망 이용료
+FEE_VAT = 0.10  # 수수료에 붙는 부가세
+TAX = 0.033  # 원천징수 (가정)
+
 TARGET = 100.0  # 만원 실수령
 BACKLOG_LIMIT = 14  # 대기 작업일 상한
 
@@ -31,6 +44,21 @@ SCENARIOS = {
     "기본": (0.7, 0.15, 0.30, 0.20),
     "낙관": (1.5, 0.20, 0.35, 0.15),
 }
+
+
+def platform_fee(price: float) -> float:
+    """건당 판매 금액(만원)에 대한 크몽 판매 수수료(서비스 이용료 + 결제망 이용료 + 부가세)."""
+    service, lower = 0.0, 0.0
+    for upper, rate in FEE_TIERS:
+        if price > lower:
+            service += (min(price, upper) - lower) * rate
+        lower = upper
+    return (service + price * PG_FEE) * (1 + FEE_VAT)
+
+
+def net_of(price: float) -> float:
+    """건당 실수령(만원) = (판매 금액 - 크몽 수수료) x (1 - 원천징수)."""
+    return (price - platform_fee(price)) * (1 - TAX)
 
 
 @dataclass(frozen=True)
@@ -91,7 +119,7 @@ def simulate(rng, base_inq, p0, pmax, reject, capacity_days, weeks,
             if jobs[0][0] <= 1e-9:
                 _, price, is_trial = jobs.pop(0)
                 if rng.random() < 0.95:
-                    pending.append((w + 1, price * NET_RATE))
+                    pending.append((w + 1, net_of(price)))
                 if rng.random() < 0.70:
                     reviews += 1
                 if is_trial and upsell > 0 and rng.random() < upsell:
@@ -144,19 +172,33 @@ TRIAL_CONFIGS = [
     ("체험, 수주 +30%, 재의뢰 20%", 0.3, 0.2),
     ("체험, 수주 +60%, 재의뢰 20%", 0.6, 0.2),
 ]
+TRIAL_SCENARIOS = ("기본", "낙관")
 
 
-def run_trial_comparison(runs, seed, capacity_days, scenario_names=("기본", "낙관")):
-    scen = {k: SCENARIOS[k] for k in scenario_names}
+def _trial_scen():
+    return {k: SCENARIOS[k] for k in TRIAL_SCENARIOS}
+
+
+def run_trial_comparison(runs, seed, capacity_days):
     rows = []
     for label, lift, upsell in TRIAL_CONFIGS:
         if lift is None:
-            res = run(runs, seed, capacity_days, scenarios=scen)
+            res = run(runs, seed, capacity_days, scenarios=_trial_scen())
         else:
             res = run(runs, seed, capacity_days, packages=with_trial(lift), conv_lift=lift, upsell=upsell,
-                      scenarios=scen)
+                      scenarios=_trial_scen())
         rows.append((label, res))
     return rows
+
+
+def print_fees():
+    print("\n## 건당 실수령 (크몽 공식 수수료 + 원천징수 3.3% 가정)")
+    print("| 판매 금액(만원) | 크몽 수수료 | 수수료 후 | 원천징수 후 실수령 | 실수령 비율 |")
+    print("|---|---|---|---|---|")
+    for price in (4.0, 8.0, 15.0, 25.0, 30.0, 100.0, 350.0):
+        fee = platform_fee(price)
+        print(f"| {price:g} | {fee:.2f} | {price - fee:.2f} | {net_of(price):.2f} | {net_of(price) / price:.1%} |")
+    print(f"\n실수령 100만원에 필요한 총 판매액(70만원 이하 건 기준): {TARGET / (net_of(10.0) / 10.0):.0f}만원")
 
 
 def print_base(runs, seed):
@@ -171,9 +213,22 @@ def print_base(runs, seed):
                   f"{r['P(<=26주)']:.0%} | {med_w} | {p10:.0f} / {med:.0f} / {p90:.0f} |")
 
 
+def print_inquiry_sensitivity(runs, seed, capacity_days=6):
+    print(f"\n## 민감도: 주당 기본 문의 수 (전환 15%, 거절 20%, 가용 {capacity_days}일/주)")
+    print("| 주당 기본 문의 | 12주 내 | 26주 내 | 26주 실수령 중앙값(만원) |")
+    print("|---|---|---|---|")
+    for b in (0.7, 1.5, 3.0, 5.0, 8.0):
+        r = run(runs, seed, capacity_days, scenarios={"x": (b, 0.15, 0.30, 0.20)})["x"]
+        print(f"| {b:g} | {r['P(<=12주)']:.0%} | {r['P(<=26주)']:.0%} | {r['26주 실수령 p10/중앙/p90'][1]:.0f} |")
+    pricey = replace(BASE, prices=tuple(p * 1.5 for p in BASE.prices))
+    r = run(runs, seed, capacity_days, packages=pricey, scenarios={"x": (1.5, 0.15, 0.30, 0.20)})["x"]
+    print(f"\n가격 x1.5 (12 / 22.5 / 45만, 문의 1.5/주): 12주 내 {r['P(<=12주)']:.0%}, 26주 내 {r['P(<=26주)']:.0%}, "
+          f"26주 실수령 중앙값 {r['26주 실수령 p10/중앙/p90'][1]:.0f}만원")
+
+
 def print_trial(runs, seed, capacity_days=6):
     rows = run_trial_comparison(runs, seed, capacity_days)
-    for scen in ("기본", "낙관"):
+    for scen in TRIAL_SCENARIOS:
         print(f"\n## 체험 패키지 비교 — {scen} 시나리오 (가용 {capacity_days}일/주, 26주, {runs}회)")
         print("| 구성 | 12주 내 100만 | 26주 내 100만 | 26주 실수령 평균 | p10 / 중앙 / p90(만원) | 26주 리뷰 수 평균 |")
         print("|---|---|---|---|---|---|")
@@ -184,10 +239,35 @@ def print_trial(runs, seed, capacity_days=6):
                   f"{p10:.0f} / {med:.0f} / {p90:.0f} | {r['26주 리뷰 수 평균']:.1f} |")
 
 
+def print_breakeven(runs, seed, capacity_days=6):
+    key = "26주 실수령 평균"
+    base = run(runs, seed, capacity_days, scenarios=_trial_scen())
+    print("\n## 체험 손익분기 (26주 실수령 평균, 만원. 괄호는 현행 대비)")
+    print("| 수주 증가 가정 | 기본 | 낙관 |")
+    print("|---|---|---|")
+    print(f"| 체험 없음 (현행) | {base['기본'][key]:.1f} | {base['낙관'][key]:.1f} |")
+    for lift in (0.0, 0.05, 0.10, 0.15, 0.20, 0.30):
+        r = run(runs, seed, capacity_days, packages=with_trial(lift), conv_lift=lift, scenarios=_trial_scen())
+        print(f"| +{lift:.0%} | {r['기본'][key]:.1f} ({r['기본'][key] - base['기본'][key]:+.1f}) | "
+              f"{r['낙관'][key]:.1f} ({r['낙관'][key] - base['낙관'][key]:+.1f}) |")
+    print("\n## 잠식률 민감도 (수주 +30% 고정, 26주 실수령 평균)")
+    print("| 잠식률(STANDARD->체험) | 기본 | 낙관 |")
+    print("|---|---|---|")
+    for c in (0.0, 0.25, 0.5, 0.75, 1.0):
+        r = run(runs, seed, capacity_days, packages=with_trial(0.3, c), conv_lift=0.3, scenarios=_trial_scen())
+        print(f"| {c:.0%} | {r['기본'][key]:.1f} | {r['낙관'][key]:.1f} |")
+    spread = [run(runs, sd, capacity_days, scenarios=_trial_scen()) for sd in (1, 2, 3)]
+    print("\n시드 1/2/3에서 현행 평균(기본, 낙관):",
+          ", ".join(f"({v['기본'][key]:.1f}, {v['낙관'][key]:.1f})" for v in spread))
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", type=int, default=10000)
     ap.add_argument("--seed", type=int, default=42)
     a = ap.parse_args()
+    print_fees()
     print_base(a.runs, a.seed)
+    print_inquiry_sensitivity(a.runs, a.seed)
     print_trial(a.runs, a.seed)
+    print_breakeven(a.runs, a.seed)

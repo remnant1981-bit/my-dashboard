@@ -15,10 +15,10 @@ def sim():
     return mod
 
 
-def legacy_simulate(rng, base_inq, p0, pmax, reject, capacity_days, weeks):
-    """체험 패키지 도입 전 모델의 사본. 기존 RESULTS.md 수치가 그대로 재현되는지 지키기 위한 기준."""
+def legacy_simulate(rng, base_inq, p0, pmax, reject, capacity_days, weeks, net_of):
+    """체험 패키지 도입 전 모델의 사본 (3단 패키지, 재의뢰 없음). 체험 기능이 기본 모델을 바꾸지 않는지 지키는 기준.
+    건당 실수령 계산(net_of)만 현재 수수료 함수를 주입받음."""
     prices, days, mix = np.array([8.0, 15.0, 30.0]), np.array([3, 5, 7]), np.array([0.5, 0.3, 0.2])
-    net_rate = (1 - 0.20) * (1 - 0.033)
     reviews, cum_net, backlog_days = 0, 0.0, 0.0
     jobs, pending, reached = [], [], None
     for w in range(1, weeks + 1):
@@ -40,7 +40,7 @@ def legacy_simulate(rng, base_inq, p0, pmax, reject, capacity_days, weeks):
             if jobs[0][0] <= 1e-9:
                 price = jobs.pop(0)[1]
                 if rng.random() < 0.95:
-                    pending.append((w + 1, price * net_rate))
+                    pending.append((w + 1, net_of(float(price))))
                 if rng.random() < 0.70:
                     reviews += 1
         for item in [x for x in pending if x[0] <= w]:
@@ -58,8 +58,28 @@ def test_base_model_unchanged_by_trial_feature(sim, scenario, capacity):
     new_rng, old_rng = np.random.default_rng(42), np.random.default_rng(42)
     for _ in range(300):  # 같은 난수열에서 300회 연속 동일해야 함
         net, reached, _ = sim.simulate(new_rng, b, p0, pmax, rej, capacity, 26)
-        old_net, old_reached = legacy_simulate(old_rng, b, p0, pmax, rej, capacity, 26)
+        old_net, old_reached = legacy_simulate(old_rng, b, p0, pmax, rej, capacity, 26, sim.net_of)
         assert net == pytest.approx(old_net) and reached == old_reached
+
+
+def test_platform_fee_matches_kmong_official_example(sim):
+    # 크몽 '판매 수수료 정책' 공식 예시: 3,500,000원 판매 시
+    #   서비스 이용료 303,000 (70만x16.4% + 130만x9.4% + 150만x4.4%), 결제망 이용료 115,500, 부가세 41,850
+    #   -> 판매 금액 - 수수료 = 3,039,650원
+    fee = sim.platform_fee(350.0)  # 단위: 만원
+    assert fee == pytest.approx(46.035)
+    assert 350.0 - fee == pytest.approx(303.965)
+
+
+def test_platform_fee_tiers(sim):
+    # 70만원 이하 건: (16.4% + 3.3%) x 1.1 = 21.67%
+    for price in (4.0, 8.0, 15.0, 30.0, 70.0):
+        assert sim.platform_fee(price) == pytest.approx(price * 0.2167)
+    # 구간 경계를 넘으면 초과분에만 낮은 요율 적용 (100만원: 70만x16.4% + 30만x9.4%)
+    assert sim.platform_fee(100.0) == pytest.approx((70 * 0.164 + 30 * 0.094 + 100 * 0.033) * 1.1)
+    # 실수령은 판매 금액보다 작고, 금액이 커질수록 늘어남
+    nets = [sim.net_of(p) for p in (4.0, 8.0, 15.0, 30.0, 100.0, 350.0)]
+    assert nets == sorted(nets) and all(n < p for n, p in zip(nets, (4.0, 8.0, 15.0, 30.0, 100.0, 350.0)))
 
 
 def test_with_trial_mix_is_valid(sim):
