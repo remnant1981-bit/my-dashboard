@@ -8,8 +8,8 @@
    pip install -r samples/requirements.txt -r requirements-dev.txt
    python -m pytest -q tests
    ```
-5. `exposure/kmong_detail_page.md`(제목·본문·이미지 구성)와 `listing_kmong.md`로 상품 등록 — 이미지는 `demo/images/`(미리보기·가상 데이터·출처 표기 유지) (가격·문구는 본인 검토 후 수정, 하단 "내부용" 구간은 게시하지 않음)
-   - 패키지: 크몽은 한 상품에 3칸임. `listing_kmong.md`의 **안 A(체험 4만 / 15만 / 30만, 권장)** 또는 안 B(8 / 15 / 30만 + 체험 별도 상품) 중 선택
+5. **`listing_final_kmong.md`를 항목 순서대로 붙여 넣어** 상품 등록 (근거·대안은 `exposure/kmong_detail_page.md`, `listing_kmong.md`) — 이미지는 `demo/images/`(미리보기·가상 데이터·출처 표기 유지) (가격·문구는 본인 검토 후 수정, 하단 "내부용" 구간은 게시하지 않음)
+   - 패키지는 **안 A 확정**: STANDARD 칸 = 체험 4만 / DELUXE 15만 / PREMIUM 30만 (8만원은 견적). 붙여 넣을 문구는 `listing_final_kmong.md` (상품 2도 같은 규칙, 범위·작업일은 제안값이라 검토 필요)
    - 등록 후 크몽 [판매 관리 > 수익 관리 > 수익금 계산기]로 실제 수수료 확인 (문서의 21.67%는 공식 정책 기준 계산값)
    - **등록일부터 `tracking/log.csv`에 문의·수주·완료·리뷰를 한 줄씩 기록** (양식·규칙: `tracking/README.md`, 개인정보·의뢰 내용은 적지 않음)
    - 2~4주 뒤 `python simulation/calibrate.py tracking/log.csv --start <등록일>`로 실측 기반 예측 확인 (문의 20건·4주 전에는 방향만 참고)
