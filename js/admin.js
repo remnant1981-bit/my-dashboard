@@ -337,7 +337,7 @@
       collection(el, {
         title: '제품 카테고리', desc: '제품 분류. ID 변경 시 해당 제품들의 카테고리도 함께 변경됩니다.', item: '카테고리', get: () => D.categories,
         cols: [['image', '이미지', (o) => thumb(o.image)], ['name', '이름', (o) => `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(o.color || '#ccc')};margin-right:6px"></span><b>${esc(o.name)}</b><br><span style="color:var(--muted)">${esc(o.nameEn)}</span>`], ['id', 'ID'], ['cnt', '제품 수', (o) => D.products.filter((p) => p.category === o.id).length]],
-        fields: [{ k: 'name', label: '이름 (국문)' }, { k: 'nameEn', label: '이름 (영문)' }, { k: 'id', label: 'ID (영문)', hint: '예: temperature' }, { k: 'color', label: '대표 색상', type: 'color', hint: '카드 상단 라인·라벨 색상' }, { k: 'desc', label: '설명', type: 'textarea', full: true, rows: 2 }, { k: 'image', label: '대표 이미지', type: 'image', full: true }],
+        fields: [{ k: 'name', label: '이름 (국문)' }, { k: 'nameEn', label: '이름 (영문)' }, { k: 'homeTitle', label: '메인 화면 카드 제목', hint: '비우면 이름 사용. 예: 온도센서 (FX, TX)' }, { k: 'id', label: 'ID (영문)', hint: '예: temperature' }, { k: 'color', label: '대표 색상', type: 'color', hint: '카드 상단 라인·라벨 색상' }, { k: 'desc', label: '설명', type: 'textarea', full: true, rows: 2 }, { k: 'image', label: '대표 이미지', type: 'image', full: true }],
         blank: () => ({ id: '', name: '', nameEn: '', desc: '', image: '', color: '#e1251b' }),
         validate: (o, i) => { if (!o.name) return '이름을 입력하세요'; o.id = slug(o.id || o.nameEn) || ('c' + Date.now()); if (D.categories.some((c, j) => c.id === o.id && j !== i)) return '중복 ID'; if (i >= 0 && D.categories[i].id !== o.id) D.products.forEach((p) => { if (p.category === D.categories[i].id) p.category = o.id; }); }
       });

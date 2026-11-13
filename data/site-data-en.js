@@ -110,7 +110,8 @@ window.SMG_DATA_EN = {
       "name": "Temperature Sensor",
       "nameEn": "Temperature Sensor",
       "desc": "Stator winding RTDs, coil-end & surface sensors, industrial RTDs & thermocouples, multi-point thermocouples, thermostats",
-      "image": "assets/img/str.webp",
+      "image": "assets/img/fx.webp",
+      "homeTitle": "Temperature Sensor (FX, TX)",
       "color": "#d71f26"
     },
     {
