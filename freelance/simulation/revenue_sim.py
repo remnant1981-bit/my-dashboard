@@ -83,12 +83,14 @@ def with_trial(lift: float, cannibal: float = 0.5) -> Packages:
 
 
 def simulate(rng, base_inq, p0, pmax, reject, capacity_days, weeks,
-             packages: Packages = BASE, conv_lift: float = 0.0, upsell: float = 0.0):
-    """한 번의 시뮬레이션. (26주 누적 실수령, 목표 달성 주 또는 None, 리뷰 수) 반환.
-    packages=BASE, conv_lift=0, upsell=0 이면 체험 패키지 도입 전 모델과 난수 호출 순서까지 동일함."""
+             packages: Packages = BASE, conv_lift: float = 0.0, upsell: float = 0.0,
+             start_reviews: int = 0, start_net: float = 0.0):
+    """한 번의 시뮬레이션. (기간 말 누적 실수령, 목표 달성 주 또는 None, 리뷰 수) 반환.
+    start_reviews/start_net: 이미 쌓인 리뷰 수와 실수령(만원)에서 이어서 시뮬레이션 (calibrate.py용).
+    packages=BASE, conv_lift=0, upsell=0, start_*=0 이면 체험 패키지 도입 전 모델과 난수 호출 순서까지 동일함."""
     mix = np.array(packages.mix)
     base_mix = np.array(BASE.mix)
-    reviews, cum_net, backlog_days = 0, 0.0, 0.0
+    reviews, cum_net, backlog_days = start_reviews, float(start_net), 0.0
     jobs = []  # [남은 작업일, 가격, 체험 여부]
     pending = []  # (정산 주, 금액)
     followups = []  # (투입 주, 작업일, 가격) - 체험 후 재의뢰

@@ -5,3 +5,6 @@ __pycache__/
 *.csv
 !sample_output/*.xlsx
 !sample_output/*.csv
+tracking/log.csv
+tracking/report*.md
+!tracking/log_template.csv
