@@ -40,6 +40,8 @@
     const row = Object.assign({ subject, page: location.pathname, lang: EN ? 'EN' : 'KO' }, data);
     try { fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(row), keepalive: true }); } catch (e) {}
   }
+  // 방문자 통계 이벤트 (Google Analytics). 개인정보(이름·연락처·내용)는 보내지 않음
+  function track(name, p) { try { if (window.gtag && !preview) window.gtag('event', name, p || {}); } catch (e) {} }
   async function sendInquiry(subject, data) {
     saveToSheet(subject, data);
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
@@ -49,10 +51,12 @@
     const order = st.formPrimary === 'endpoint' ? [['endpoint', viaEndpoint], ['web3forms', viaWeb3]] : [['web3forms', viaWeb3], ['endpoint', viaEndpoint]];
     // 점검용: contact.html?backuptest=1 이면 1순위를 건너뛰고 2순위로만 전송
     if (params.get('backuptest') === '1') order.shift();
-    for (const [name, fn] of order) { if (await fn()) return name; }
+    const lead = { lead_source: data.source || 'form', inquiry_type: String(data.type || '').slice(0, 40), page_lang: EN ? 'en' : 'ko' };
+    for (const [name, fn] of order) { if (await fn()) { track('generate_lead', Object.assign({ method: name }, lead)); return name; } }
+    track('lead_send_failed', lead);
     return '';
   }
-  window.SMG = { data: D, DRAFT_KEY, INQ_KEY, safeGet, safeSet, EN, L, sendInquiry, preview };
+  window.SMG = { data: D, DRAFT_KEY, INQ_KEY, safeGet, safeSet, EN, L, sendInquiry, preview, track };
 
   /* ---------- Helpers ---------- */
   const $ = (s, r = document) => r.querySelector(s);
@@ -460,6 +464,17 @@
       const s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + D.settings.gaId; document.head.appendChild(s);
       window.dataLayer = window.dataLayer || []; window.gtag = function () { dataLayer.push(arguments); }; gtag('js', new Date()); gtag('config', D.settings.gaId);
     }
+    // 주요 행동 클릭 집계: 전화·메일·자료 다운로드·영상 재생·채팅 열기·견적함 담기
+    document.addEventListener('click', (e) => {
+      const el = e.target && e.target.closest ? e.target.closest('a[href],button,.yt') : null; if (!el) return;
+      const href = el.getAttribute('href') || '', lang = { page_lang: EN ? 'en' : 'ko' };
+      if (href.indexOf('tel:') === 0) return track('tel_click', lang);
+      if (href.indexOf('mailto:') === 0) return track('email_click', lang);
+      if (el.tagName === 'A' && (el.hasAttribute('download') || /\.(pdf|zip|docx?|xlsx?|pptx?|hwpx?|dwg|step|stp)(\?|#|$)/i.test(href))) return track('download_click', Object.assign({ file_name: decodeURIComponent(href.split('/').pop().split('?')[0]).slice(0, 80) }, lang));
+      if (el.matches('.hero-video,.yt-play,.yt') || el.closest('.yt')) return track('video_play', lang);
+      if (el.matches('.chat-launch,.mchat')) return track('chat_open', lang);
+      if (el.matches('.qadd') && el.getAttribute('aria-pressed') !== 'true') return track('quote_add', Object.assign({ item_id: el.dataset.id || document.body.dataset.pid || '' }, lang));
+    }, true);
     // 네이버 애널리틱스 (analytics.naver.com 사이트 ID)
     const nwa = String(D.settings.naverWa || '').trim();
     if (/^[a-z0-9]{6,32}$/i.test(nwa) && !preview) {

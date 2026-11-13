@@ -58,6 +58,8 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 | 11-05 | 문구 | 메인 대표 문구(카탈로그 슬로건 소제목 + "극한 환경의 온도를 책임집니다") | #25 |
 | 11-06 | 점검 | 전 페이지(66개×PC/모바일) 종합 감사: 콘솔 오류·404·깨진 링크 0건. 공지·사례 페이지 canonical 추가, 공지 상세 canonical 교체 | #26 |
 | 11-10 | 성능·접근성 | 모바일 홈 LCP 개선(정적 히어로·폰트 비차단), 접근성 보정(대비·ARIA·제목 순서), 서브페이지 메타 설명 보강, 파트너 목록에서 인증기관(Bureau Veritas) 제외 | #30 |
+| 11-11 | 홍보영상 | 유튜브 홍보영상 적용(국·영문 영상 분리), 메인 첫 화면 우측 카드 배치 | #31, #32 |
+| 11-13 | 모니터링·통계 | GA 전환 이벤트 7종, 사이트 상태 점검 스크립트, 월간 보고 항목 | #33 |
 
 ### DNS 전환 경과 (참고)
 - 변경 직후 일부 통신사 DNS(KT 등)가 예전 서버 주소(115.68.7.110)를 캐시 → 인증서 경고·다른 사이트(balance.go.kr) 표시 현상
@@ -272,3 +274,37 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 
 ### 생성 스크립트 실행 순서 (코드·데이터 구조 변경 시, Claude Code)
 `python3 tools/build_en_pages.py .` → `python3 tools/build_images.py` → `python3 tools/build_og_images.py` → `node tools/build_product_pages.js` → `python3 tools/stamp_assets.py`
+
+---
+
+## 13. 모니터링·통계 (2026-11-13 반영)
+
+### 13-1. 사이트 상태 점검
+- 실행: `python3 tools/site_check.py` (JSON 출력은 `--json`). 문제가 있으면 종료 코드 1
+- 확인 항목: 주요 12개 페이지 응답·제목·스크립트 참조·응답 시간(3초 초과 시 경고), 핵심 파일 7개, sitemap 주소 수(50 미만 경고), HTTPS 인증서 잔여일(14일 미만 경고)
+- 주기: 주 1회 + 배포(병합) 직후. 인증서는 GitHub Pages가 자동 갱신하므로 잔여일이 14일 아래로 내려가면 저장소 Settings → Pages 상태 확인
+
+### 13-2. 방문자 통계 이벤트 (Google Analytics 4, 속성 smg-338ba)
+이름·연락처·문의 내용 같은 개인정보는 보내지 않음. 모든 이벤트에 `page_lang`(ko/en) 포함.
+
+| 이벤트 | 발생 시점 | 추가 정보 |
+|---|---|---|
+| `generate_lead` | 견적 문의·채팅 접수·자료 다운로드 신청이 전송에 성공 | `method`(전송 경로), `lead_source`(form/chat/download), `inquiry_type` |
+| `lead_send_failed` | 전송 서비스가 모두 실패해 메일 앱으로 넘어감 | `lead_source`, `inquiry_type` |
+| `download_click` | 카탈로그·자료 파일 링크 클릭 | `file_name` |
+| `tel_click` / `email_click` | 전화번호·메일 주소 클릭 | |
+| `video_play` | 홍보영상 카드·재생 버튼 클릭 | |
+| `chat_open` | 채팅 상담 열기 | |
+| `quote_add` | 견적함 담기 | `item_id`(제품 id) |
+
+- GA 화면: 보고서 → 참여도 → 이벤트. `generate_lead`는 관리 → 이벤트에서 "주요 이벤트"로 표시해 두면 전환으로 집계됨
+- `lead_send_failed`가 보이면 문의 전송 서비스 상태와 월 한도를 확인
+
+### 13-3. 월간 보고 항목 (조이 작성)
+| 구분 | 항목 |
+|---|---|
+| 방문 | 사용자·세션·페이지뷰, 전월 대비, 국가·유입 경로 상위 5 |
+| 관심 | 많이 본 페이지 상위 10, 제품 상세 조회 순위, `quote_add` 상위 제품 |
+| 전환 | `generate_lead` 건수(경로별), `download_click`, `tel_click`, `video_play`, 문의 전환율(문의 ÷ 사용자) |
+| 상태 | `site_check.py` 결과, `lead_send_failed` 건수, 전송 서비스 사용량 |
+| 제안 | 수치에 근거한 소규모 개선 1~2건 |
