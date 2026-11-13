@@ -58,6 +58,8 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 | 11-05 | 문구 | 메인 대표 문구(카탈로그 슬로건 소제목 + "극한 환경의 온도를 책임집니다") | #25 |
 | 11-06 | 점검 | 전 페이지(66개×PC/모바일) 종합 감사: 콘솔 오류·404·깨진 링크 0건. 공지·사례 페이지 canonical 추가, 공지 상세 canonical 교체 | #26 |
 | 11-10 | 성능·접근성 | 모바일 홈 LCP 개선(정적 히어로·폰트 비차단), 접근성 보정(대비·ARIA·제목 순서), 서브페이지 메타 설명 보강, 파트너 목록에서 인증기관(Bureau Veritas) 제외 | #30 |
+| 11-11 | 홍보영상 | 유튜브 홍보영상 적용(국·영문 영상 분리), 메인 첫 화면 우측 카드 배치 | #31, #32 |
+| 11-13 | 모니터링·통계 | GA 전환 이벤트 7종, 사이트 상태 점검 스크립트, 월간 보고 항목 | #33 |
 
 ### DNS 전환 경과 (참고)
 - 변경 직후 일부 통신사 DNS(KT 등)가 예전 서버 주소(115.68.7.110)를 캐시 → 인증서 경고·다른 사이트(balance.go.kr) 표시 현상
@@ -216,7 +218,7 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 | 순서 | 할 일 | 담당 | 비고 |
 |---|---|---|---|
 | 1 | 네이버 서치어드바이저 [소유확인] → sitemap 제출 (`https://www.sungsil.com/sitemap.xml`) | 훈이님 (3분) | 소유확인 메타태그는 사이트 반영 완료. 개인 네이버 계정 사용 중 → 담당자 변경 시 3장 인계표 참고 |
-| 2 | 구글 시트 문의 게시판: 스크립트 배포 후 **웹 앱 URL만** 전달 | 훈이님 (10분) | `docs/inquiry-board-setup.md`. 조회 비밀키(TOKEN)는 전달·기록 금지 |
+| 2 | ~~구글 시트 문의 게시판 연결~~ | 완료 | 2026-11-13 연결. 조회 비밀키(TOKEN)는 담당자만 보관 |
 | 3 | Google Analytics 실시간 집계 확인 (속성 smg-338ba) → 활성 사용자·페이지 확인 후 "향상된 측정" 켜기 | 훈이님 / Chrome Claude | 측정 ID는 사이트 반영 완료 |
 | 4 | 메일플러그 수신 허용 목록: `web3forms.com`, `formspree.io` | 훈이님 | 문의 메일 스팸함 방지 |
 | 5 | 유튜브 영상 주소 · 인증서 스캔본(인증번호·유효기간) · 납품 사례 자료 | 자료 준비 | 관리자 [설정]·[회사소개·인증]·[납품 실적·사례]에 직접 입력 |
@@ -243,7 +245,7 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 - 제품 사양 19종을 2026 카탈로그(이미지 PDF) 기준으로 한 줄씩 재검증 — 현재는 2024판 텍스트 기준으로만 확인됨
 
 ---|---|---|---|
-| 1 | 문의 접수 게시판 연결 (구글 시트) | 훈이님 | `docs/inquiry-board-setup.md`, 10분 |
+| 1 | ~~문의 접수 게시판 연결 (구글 시트)~~ | 완료 | 2026-11-13 연결 (시트 "SMG 홈페이지 문의 접수", 박장훈 계정) |
 | 2 | 방문자 통계 ID (GA4 `G-…`, 네이버 애널리틱스) | 훈이님 → Claude 입력 | 각 5분 |
 | 3 | 유튜브 영상·인증서 스캔본·납품 사례 자료 | 훈이님 | 관리자에서 직접 입력 가능 |
 | 4 | 카카오 공유 버튼 (선택) | 결정 필요 | developers.kakao.com JavaScript 키 |
@@ -272,3 +274,42 @@ Network Solutions DNS ──(www CNAME / @ A 185.199.108~111.153)──▶ GitHu
 
 ### 생성 스크립트 실행 순서 (코드·데이터 구조 변경 시, Claude Code)
 `python3 tools/build_en_pages.py .` → `python3 tools/build_images.py` → `python3 tools/build_og_images.py` → `node tools/build_product_pages.js` → `python3 tools/stamp_assets.py`
+
+---
+
+## 13. 모니터링·통계 (2026-11-13 반영)
+
+### 13-1. 사이트 상태 점검
+- 실행: `python3 tools/site_check.py` (JSON 출력은 `--json`). 문제가 있으면 종료 코드 1
+- 확인 항목: 주요 12개 페이지 응답·제목·스크립트 참조·응답 시간(3초 초과 시 경고), 핵심 파일 7개, sitemap 주소 수(50 미만 경고), HTTPS 인증서 잔여일(14일 미만 경고)
+- 주기: 주 1회 + 배포(병합) 직후. 인증서는 GitHub Pages가 자동 갱신하므로 잔여일이 14일 아래로 내려가면 저장소 Settings → Pages 상태 확인
+
+### 13-2. 방문자 통계 이벤트 (Google Analytics 4, 속성 smg-338ba)
+이름·연락처·문의 내용 같은 개인정보는 보내지 않음. 모든 이벤트에 `page_lang`(ko/en) 포함.
+
+| 이벤트 | 발생 시점 | 추가 정보 |
+|---|---|---|
+| `generate_lead` | 견적 문의·채팅 접수·자료 다운로드 신청이 전송에 성공 | `method`(전송 경로), `lead_source`(form/chat/download), `inquiry_type` |
+| `lead_send_failed` | 전송 서비스가 모두 실패해 메일 앱으로 넘어감 | `lead_source`, `inquiry_type` |
+| `download_click` | 카탈로그·자료 파일 링크 클릭 | `file_name` |
+| `tel_click` / `email_click` | 전화번호·메일 주소 클릭 | |
+| `video_play` | 홍보영상 카드·재생 버튼 클릭 | |
+| `chat_open` | 채팅 상담 열기 | |
+| `quote_add` | 견적함 담기 | `item_id`(제품 id) |
+
+- GA 화면: 보고서 → 참여도 → 이벤트. `generate_lead`는 관리 → 이벤트에서 "주요 이벤트"로 표시해 두면 전환으로 집계됨
+- `lead_send_failed`가 보이면 문의 전송 서비스 상태와 월 한도를 확인
+
+### 13-2-1. 방문 통계 자동 기록 (구글 시트)
+- GA 수치(일별 사용자·세션·페이지뷰·머문 시간, 이벤트, 페이지·유입·국가·기기 순위)를 매일 구글 시트에 자동 기록
+- 설정: `docs/ga-report-setup.md` (스크립트 `docs/ga-report-apps-script.gs`, 처음 한 번 10분)
+- 이 시트가 주간·월간 보고의 원본 데이터임
+
+### 13-3. 월간 보고 항목 (조이 작성)
+| 구분 | 항목 |
+|---|---|
+| 방문 | 사용자·세션·페이지뷰, 전월 대비, 국가·유입 경로 상위 5 |
+| 관심 | 많이 본 페이지 상위 10, 제품 상세 조회 순위, `quote_add` 상위 제품 |
+| 전환 | `generate_lead` 건수(경로별), `download_click`, `tel_click`, `video_play`, 문의 전환율(문의 ÷ 사용자) |
+| 상태 | `site_check.py` 결과, `lead_send_failed` 건수, 전송 서비스 사용량 |
+| 제안 | 수치에 근거한 소규모 개선 1~2건 |

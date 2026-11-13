@@ -11,6 +11,7 @@ SMG(주식회사 에스엠지) 기업 홈페이지. 정적 HTML/CSS/JS, 빌드 �
 - 제품 상세 정적 페이지 `product/*.html`, `en/product/*.html`, `sitemap.xml` 제품 항목은 생성물 → 제품 데이터 변경 후 `python3 tools/build_og_images.py` (새 제품·대표사진 변경 시) → `node tools/build_product_pages.js`
 - 문의 전송: `js/app.js`의 `SMG.sendInquiry` (Web3Forms → Formspree → 메일앱, 서비스별 12초 제한)
 - 로컬 확인: `python3 -m http.server 8000`
+- 실사이트 상태 점검: `python3 tools/site_check.py` (배포 직후·주 1회). 통계 이벤트는 `js/app.js`의 `track()` — 개인정보를 넣지 말 것
 
 ## 반드시 지킬 것
 - 저장소 공개 상태: 비밀번호·토큰·계정정보를 코드·커밋·PR에 쓰지 말 것

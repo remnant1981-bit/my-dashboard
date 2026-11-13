@@ -30,7 +30,7 @@ window.SMG_DEFAULT_DATA = {
     "notifyEmail": "sungsil@sungsil.com",
     "catalogPdf": "assets/SMG_Products_Catalogue_2026.pdf",
     "gaId": "G-FV1FMG817S",
-    "sheetEndpoint": "",
+    "sheetEndpoint": "https://script.google.com/macros/s/AKfycbzqr7nz4NufAJ3YWmg_76RiFBm8hlr6MAR36CYp5xmDBVZV0qi6zzTVllYlCkZlPPuP4g/exec",
     "downloadGate": "optional",
     "videoUrl": "https://youtu.be/HN5ZVgWYOSM",
     "videoUrlEn": "https://youtu.be/0RrL5J4bvDc",
