@@ -42,7 +42,27 @@
   }
   // 방문자 통계 이벤트 (Google Analytics). 개인정보(이름·연락처·내용)는 보내지 않음
   function track(name, p) { try { if (window.gtag && !preview) window.gtag('event', name, p || {}); } catch (e) {} }
+  // 자료 다운로드 이력 → 구글 시트 "다운로드 이력" 탭 (연락처를 남긴 경우 같은 방문 중에는 회사명 포함)
+  function logDownload(href, label) {
+    const url = String((D.settings || {}).sheetEndpoint || '').trim();
+    if (preview || !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) return;
+    const file = String(href || '').split('#')[0].split('?')[0];
+    const dl = (D.downloads || []).find((x) => String(x.file || '').split('#')[0] === file);
+    const title = dl ? dl.title : file === String((D.settings || {}).catalogPdf || '').split('#')[0] ? 'SMG Products Catalogue' : String(label || '').trim().slice(0, 80) || decodeURIComponent(file.split('/').pop());
+    let who = {}; try { who = JSON.parse(sessionStorage.getItem('smg_dl_who') || '{}'); } catch (e) {}
+    const ref = (() => { try { const r = document.referrer; return r && new URL(r).host !== location.host ? new URL(r).host : ''; } catch (e) { return ''; } })();
+    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '', phone: who.phone || '' };
+    try { fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(row), keepalive: true }); } catch (e) {}
+  }
+  // 문의 제품의 카테고리 id (구글 시트 "제품 분류"·담당 팀 자동 배정용). 관심제품·견적품목에 들어 있는 모델명·제품명으로 찾음 (문의 내용은 오인 방지로 제외)
+  function inquiryCats(data) {
+    const txt = [data.product, data.items].filter(Boolean).join('\n').toLowerCase(); if (!txt) return '';
+    const ids = []; (D.products || []).forEach((p) => { const keys = [p.name, p.nameKo].concat(String(p.code || '').split(/\s*,\s*/)).filter((k) => k && k.length >= 2).map((k) => String(k).toLowerCase());
+      if (keys.some((k) => (k.length <= 4 ? new RegExp('(^|[^a-z0-9])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z0-9]|$)').test(txt) : txt.indexOf(k) >= 0)) && ids.indexOf(p.category) < 0) ids.push(p.category); });
+    return ids.join(',');
+  }
   async function sendInquiry(subject, data) {
+    const cat = inquiryCats(data); if (cat) data = Object.assign({}, data, { category: cat });
     saveToSheet(subject, data);
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
     const viaEndpoint = () => ep && postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data));
@@ -470,7 +490,10 @@
       const href = el.getAttribute('href') || '', lang = { page_lang: EN ? 'en' : 'ko' };
       if (href.indexOf('tel:') === 0) return track('tel_click', lang);
       if (href.indexOf('mailto:') === 0) return track('email_click', lang);
-      if (el.tagName === 'A' && (el.hasAttribute('download') || /\.(pdf|zip|docx?|xlsx?|pptx?|hwpx?|dwg|step|stp)(\?|#|$)/i.test(href))) return track('download_click', Object.assign({ file_name: decodeURIComponent(href.split('/').pop().split('?')[0]).slice(0, 80) }, lang));
+      if (el.tagName === 'A' && (el.hasAttribute('download') || /\.(pdf|zip|docx?|xlsx?|pptx?|hwpx?|dwg|step|stp)(\?|#|$)/i.test(href))) {
+        // 연락처 입력 창이 먼저 뜨면(기본 동작 취소) 이번 클릭은 건너뛰고, 실제로 받을 때 한 번만 기록
+        return setTimeout(() => { if (e.defaultPrevented) return; track('download_click', Object.assign({ file_name: decodeURIComponent(href.split('/').pop().split('?')[0]).slice(0, 80) }, lang)); logDownload(href, el.textContent); }, 0);
+      }
       if (el.matches('.hero-video,.yt-play,.yt') || el.closest('.yt')) return track('video_play', lang);
       if (el.matches('.chat-launch,.mchat')) return track('chat_open', lang);
       if (el.matches('.qadd') && el.getAttribute('aria-pressed') !== 'true') return track('quote_add', Object.assign({ item_id: el.dataset.id || document.body.dataset.pid || '' }, lang));

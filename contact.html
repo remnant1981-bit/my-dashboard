@@ -33,20 +33,21 @@
 <div class="field"><label for="f-product">관심 제품</label><select id="f-product" name="product"></select></div>
 <div class="field"><label for="f-company">회사명<span class="req">*</span></label><input id="f-company" name="company" autocomplete="organization" data-req><span class="err">회사명을 입력해 주세요</span></div>
 <div class="field"><label for="f-name">담당자명<span class="req">*</span></label><input id="f-name" name="name" autocomplete="name" data-req><span class="err">담당자명을 입력해 주세요</span></div>
+<div class="field"><label for="f-title">직급·직책</label><input id="f-title" name="title" autocomplete="organization-title" placeholder="예) 과장 / 구매팀장"></div>
 <div class="field"><label for="f-phone">연락처<span class="req">*</span></label><input id="f-phone" name="phone" type="tel" autocomplete="tel" placeholder="010-0000-0000" data-req><span class="err">올바른 연락처를 입력해 주세요</span></div>
-<div class="field"><label for="f-email">이메일<span class="req">*</span></label><input id="f-email" name="email" type="email" autocomplete="email" data-req><span class="err">올바른 이메일을 입력해 주세요</span></div>
+<div class="field full"><label for="f-email">이메일<span class="req">*</span></label><input id="f-email" name="email" type="email" autocomplete="email" data-req><span class="err">올바른 이메일을 입력해 주세요</span></div>
 <div class="field full"><label for="f-qty">예상 수량 / 납기</label><input id="f-qty" name="qty" placeholder="예) 50EA / 2027년 1월"></div>
 <div class="field full"><label for="f-msg">문의 내용<span class="req">*</span></label><textarea id="f-msg" name="message" data-req placeholder="사용 환경(온도·압력·매체), 요구 사양, 인증 필요 여부 등을 적어주시면 더 정확한 답변이 가능합니다."></textarea><span class="err">문의 내용을 입력해 주세요</span></div>
 <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
-<label class="agree field full"><input type="checkbox" name="agree" data-req><span><b style="color:var(--text)">[필수] 개인정보 수집·이용 동의</b><br>수집항목: 회사명, 담당자명, 연락처, 이메일 / 목적: 문의 응대 및 견적 회신 / 보유기간: 문의 처리 후 3년. <a href="privacy.html" target="_blank" style="text-decoration:underline">전문 보기</a></span></label>
+<label class="agree field full"><input type="checkbox" name="agree" data-req><span><b style="color:var(--text)">[필수] 개인정보 수집·이용 동의</b><br>수집항목: 회사명, 담당자명, 연락처, 이메일 (선택: 직급·직책) / 목적: 문의 응대 및 견적 회신 / 보유기간: 문의 처리 후 3년. <a href="privacy.html" target="_blank" style="text-decoration:underline">전문 보기</a></span></label>
 <div class="full" style="grid-column:1/-1"><button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;height:58px;font-size:16px">문의 접수하기</button></div>
 </div></form></div></section>
 <section class="sec-sm" style="padding-top:0"><div class="container"><div class="map" id="map"></div></div></section></main>
 <script src="data/site-data.js"></script>
 <script src="data/img-variants.js?v=66bff654"></script>
-<script src="js/app.js?v=47b5639e"></script>
+<script src="js/app.js?v=faa73dd3"></script>
 <script src="js/extras.js?v=e41e4ac7"></script>
-<script src="js/features.js?v=0574a717"></script>
+<script src="js/features.js?v=bdeaeeee"></script>
 <script src="js/motion.js?v=a71639a9"></script>
 <script src="js/chat.js?v=cd3575ce"></script>
 </body>

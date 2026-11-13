@@ -77,6 +77,7 @@
           const err = !d.company.trim() || !d.name.trim() ? t('회사명과 성함을 입력해 주세요', 'Please enter company and name') : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) ? t('이메일을 확인해 주세요', 'Please check your email') : !d.agree ? t('개인정보 수집·이용에 동의해 주세요', 'Please agree to the privacy terms') : '';
           if (err) { const p = $('.dg-err', m); p.textContent = err; p.hidden = false; return; }
           if (!d.website && S.sendInquiry) S.sendInquiry(`[${t('자료 다운로드', 'Download')}] ${title} - ${d.company}`, { type: t('자료 다운로드', 'Download'), source: 'download', company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim(), message: `${t('다운로드 자료', 'File')}: ${title}\n${href}` });
+          if (!d.website) ss.set('smg_dl_who', JSON.stringify({ company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim() })); // 같은 방문 중 다운로드 이력에 회사명 표시
           close(); S.toast(t('감사합니다. 다운로드를 시작합니다.', 'Thank you. Your download is starting.')); go();
         };
         setTimeout(() => { const i = $('input[name=company]', m); if (i) i.focus(); }, 50);
