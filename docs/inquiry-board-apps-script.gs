@@ -15,6 +15,8 @@
  *  - 진행 단계(견적 검토·견적 발송·협의 중·수주·실주·보류)는 선택 입력. 바꿀 때마다 변경 로그에 이력이 남음
  *  - 새 문의: 담당 팀 알림 메일로 즉시 안내 / 평일 아침: 담당 미지정·오늘 기한·기한 초과 건을 팀별로 메일 (installTriggers 1회 실행)
  *  - 회신 기한이 지났는데 회신일이 비어 있으면: 관리자(NOTIFY_EMAIL)에게 즉시 1회 메일 (1시간마다 확인, 08~19시)
+ *  - 월요일 아침: 연락처를 남겼는데 "미연락"인 자료 다운로드 목록을 관리자에게 메일
+ *  - 같은 내용 10분 내 재접수는 1건만 기록, 1시간에 새 문의 알림이 MAIL_CAP건을 넘으면 팀 알림을 멈추고 관리자에게 1회 경고 (스팸 대비)
  * 모든 탭은 "머리글 이름"으로 열을 찾으므로 열 순서를 바꿔도 됨 (머리글 글자는 바꾸지 말 것)
  *
  * 조회 비밀키(TOKEN)는 "프로젝트 설정 → 스크립트 속성"의 TOKEN 에 저장 (저장소·대화에 적지 말 것)
@@ -30,6 +32,7 @@ const KEYS = Object.keys(FIELDS), LABELS = KEYS.map((k) => FIELDS[k]);
 const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일', next: '다음 조치일', updated: '최종 업데이트', ack: '접수 확인', stage: '진행 단계', due: '회신 기한', team: '담당 팀' };
 const SET_SHEET = '설정', REMIND_HOUR = 9; // 평일 아침 알림 시각(시)
 const WATCH_FROM = 8, WATCH_TO = 19;          // 기한 초과 즉시 알림을 보내는 시간대(시)
+const DUP_SEC = 600, MAIL_CAP = 15;           // 같은 내용 재접수 무시 시간(초) / 1시간 새 문의 알림 상한
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -153,6 +156,7 @@ function doPost(e) {
     } else {
       if (!d.company && !d.email && !d.message) return json_({ ok: false });
       if (d.source === 'download') return json_({ ok: true }); // 다운로드 신청은 위 "다운로드 이력"으로만 기록 (문의 탭은 견적·기술 문의 전용)
+      if (isDup_(d)) return json_({ ok: true, dup: true }); // 같은 내용 연속 접수(새로고침·스팸) 1건만
       const sh = sheet_(), c = cols_(sh), r = nextRow_(sh, c);
       KEYS.forEach((k) => {
         const col = c[FIELDS[k]]; if (!col) return;
@@ -253,8 +257,26 @@ function rebuildClients() {
   items.sort((a, b) => a.t - b.t).forEach((it) => upsertClient_(it.d, it.kind, it.t));
 }
 
+// ── 스팸·중복 대비 ──
+function cache_() { try { return CacheService.getScriptCache(); } catch (err) { return null; } }
+function isDup_(d) {
+  const cc = cache_(); if (!cc) return false;
+  const raw = [d.company, d.email, d.phone, d.message].map((x) => String(x || '').trim().toLowerCase()).join('|');
+  const key = 'dup_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, raw, Utilities.Charset.UTF_8));
+  if (cc.get(key)) return true;
+  cc.put(key, '1', DUP_SEC); return false;
+}
+function overCap_() { // 1시간(마지막 알림 기준) 동안 새 문의 알림 수가 상한을 넘으면 true
+  const cc = cache_(); if (!cc) return false;
+  const n = (Number(cc.get('mail_n')) || 0) + 1; cc.put('mail_n', String(n), 3600);
+  if (n === MAIL_CAP + 1) mail_(notifyAdmin_(), '[주의] 1시간 동안 새 문의 ' + MAIL_CAP + '건 초과 — 팀 알림 일시 중단',
+    '짧은 시간에 문의가 몰려 담당 팀 알림 메일을 잠시 멈췄습니다. 스팸일 수 있으니 시트 "문의" 탭을 확인해 주세요.\n접수 기록은 계속 저장되며, 1시간 동안 새 문의가 없으면 알림이 다시 나갑니다.\n' + ss_().getUrl());
+  return n > MAIL_CAP;
+}
+
 // ── 새 문의 알림: 담당 팀(설정 탭 알림 메일) + 관리자(NOTIFY_EMAIL) ──
 function newInquiryMail_(sh, c, r) {
+  if (overCap_()) return;
   SpreadsheetApp.flush(); // 담당 팀·회신 기한 수식 계산
   const o = rowObj_(sh, c, r), team = String(o[H.team] || ''), mails = teamMails_();
   const to = [mails[team], notifyAdmin_()].filter(Boolean).join(',');
@@ -286,8 +308,21 @@ function remindBody_(items) {
     return '■ ' + k + ' (' + l.length + '건)\n' + l.map((x) => ' - ' + x.company + ' | 회신 기한 ' + x.due + ' | ' + x.team + ' | 사내 담당 ' + x.owner + (x.stage ? ' | ' + x.stage : '') + '\n   ' + rowLink_(x.row)).join('\n'); })
     .filter(Boolean).join('\n\n') + '\n\n회신 후 "회신일"을 넣으면 목록에서 빠집니다. 진행 단계 입력은 선택입니다.';
 }
+// ── 월요일 아침: 연락처 남긴 "미연락" 다운로드 → 관리자 ──
+function downloadFollowupMail_() {
+  const to = notifyAdmin_(); if (!to) return;
+  const sh = dlSheet_(), c = cols_(sh), n = nextRowBy_(sh, c, '일시') - 2; if (n < 1) return;
+  const g = (v, h) => (c[h] ? v[c[h] - 1] : '');
+  const list = sh.getRange(2, 1, n, sh.getLastColumn()).getValues().map((v, i) => ({ v: v, row: i + 2 }))
+    .filter((x) => g(x.v, '구분') === '연락처 남김' && g(x.v, '후속 상태') === '미연락');
+  if (!list.length) return;
+  const link = (r) => ss_().getUrl() + '#gid=' + sh.getSheetId() + '&range=A' + r;
+  const body = list.map((x) => ' - ' + fmtD_(g(x.v, '일시')) + ' | ' + g(x.v, '회사명') + ' | ' + g(x.v, '담당자') + ' | ' + g(x.v, '이메일') + ' | ' + g(x.v, '자료명') + '\n   ' + link(x.row)).join('\n');
+  mail_(to, '[다운로드 후속] 미연락 ' + list.length + '건', '연락처를 남기고 자료를 받았지만 아직 연락하지 않은 업체입니다. 연락 후 "후속 상태"를 바꿔 주세요.\n\n' + body);
+}
 function dailyReminder() {
   const day = new Date().getDay(); if (day === 0 || day === 6) return; // 주말 제외
+  if (day === 1) { try { downloadFollowupMail_(); } catch (err) {} }
   const items = remindItems_(); if (!items.length) return;
   const mails = teamMails_(), teams = {};
   items.forEach((x) => { (teams[x.team] = teams[x.team] || []).push(x); });
