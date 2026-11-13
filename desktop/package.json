@@ -1,0 +1,20 @@
+{
+  "name": "smg-bom-viewer",
+  "productName": "SMG 도면 BOM 뷰어",
+  "version": "1.0.0",
+  "description": "도면 벌룬 클릭 시 BOM 정보를 표시하는 오프라인 데스크톱 앱",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "prepare-web": "node scripts/copy-web.js",
+    "start": "npm run prepare-web && electron .",
+    "build:win": "npm run prepare-web && electron-packager . SMG-BOM-Viewer --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=^/dist --ignore=^/scripts --ignore=^/node_modules",
+    "build:linux": "npm run prepare-web && electron-packager . SMG-BOM-Viewer --platform=linux --arch=x64 --out=dist --overwrite --asar --ignore=^/dist --ignore=^/scripts --ignore=^/node_modules"
+  },
+  "devDependencies": {
+    "@electron/packager": "18.3.6",
+    "electron": "33.2.1",
+    "pdfjs-dist": "3.11.174",
+    "xlsx": "0.18.5"
+  }
+}
