@@ -123,7 +123,8 @@ window.SMG_DEFAULT_DATA = {
       "name": "온도센서",
       "nameEn": "Temperature Sensor",
       "desc": "고정자 권선 RTD, 코일엔드·표면 온도센서, 산업용 RTD·열전대, 멀티 써모커플, 서모스탯",
-      "image": "assets/img/str.webp",
+      "image": "assets/img/fx.webp",
+      "homeTitle": "온도센서 (FX, TX)",
       "color": "#d71f26"
     },
     {
