@@ -72,15 +72,18 @@ function log_(sheet, a1, company, item, before, after, who, via) {
 // 회사 식별 키: 공백·법인 표기 제거 후 소문자
 // ── 알림 메일 ──
 function notifyAdmin_() { return NOTIFY_EMAIL || PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || ''; }
-function teamMails_() { // 설정 탭 "알림 팀"·"알림 메일" 표 → { 영업1팀: 'a@x.com,b@x.com' }
+function teamMails_() { // 설정 탭 "알림 팀"·"알림 사용"·"알림 메일 1~5" 표 → { 영업1팀: 'a@x.com,b@x.com' }
   const sh = ss_().getSheetByName(SET_SHEET), m = {}; if (!sh || sh.getLastRow() < 2) return m;
-  const c = cols_(sh), t = c['알림 팀'], e = c['알림 메일']; if (!t || !e) return m;
-  // 한 칸에 여러 메일(쉼표·세미콜론·줄바꿈 구분) 또는 같은 팀을 여러 줄로 적어도 모두 합침 (중복 제거)
+  const c = cols_(sh), t = c['알림 팀'], use = c['알림 사용'];
+  const es = Object.keys(c).filter((h) => /^알림 메일/.test(h)).map((h) => c[h]); if (!t || !es.length) return m;
+  // "알림 메일", "알림 메일 1~5" 열 모두 읽음. 한 칸에 여러 메일(쉼표·세미콜론·줄바꿈)·같은 팀 여러 줄도 합침 (중복 제거)
+  // "알림 사용" 열이 있으면 체크된 줄만 발송 (체크 해제 = 보류)
   sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach((v) => {
     const k = String(v[t - 1]).trim(); if (!k) return;
-    String(v[e - 1]).split(/[,;\s]+/).map((x) => x.trim()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).forEach((x) => {
+    if (use && v[use - 1] !== true) return;
+    es.forEach((e) => String(v[e - 1]).split(/[,;\s]+/).map((x) => x.trim()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).forEach((x) => {
       const l = m[k] ? m[k].split(',') : []; if (l.indexOf(x) < 0) l.push(x); m[k] = l.join(',');
-    });
+    }));
   });
   return m;
 }
