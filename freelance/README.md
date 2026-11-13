@@ -3,6 +3,7 @@
 근거: 시장 조사 결과 1순위 D(크롤링/Selenium), 보조 C(엑셀 자동화). 2순위 A(민간 사업계획서·IR)는 현재 보류.
 단가 근거: 크몽/숨고 집계 페이지 수치(크롤링 평균 약 30만, 매크로·자동화 평균 15~20만, 집계 시점 2026-11, 추정 포함).
 **수주·수익은 보장되지 않음.** 플랫폼 수수료·세금 후 실수령은 `listing_kmong.md` 하단 참고.
+패키지: 체험 4만(첫 거래용, 결과 파일만) / 8만 / 15만 / 30만. 체험은 수주가 약 +10~15% 이상 늘어야 이득 (`simulation/RESULTS.md`, 가정 기반).
 
 ## 구성
 | 경로 | 내용 | 검증 근거 |
@@ -14,6 +15,7 @@
 | `demo/` | **한글 데이터 데모 2종** (위키백과 표 수집·정제·검증, 지점 매출 취합) + 결과 미리보기 이미지 | 실사이트 실행 + `tests/test_demo.py` 7건 |
 | `tools/check_robots.py` | 수주 전 robots.txt 자동 점검 (허용/불허/확인 불가, Crawl-delay, 보수적 판정) | `tests/test_tools.py` 7건 + 실사이트 허용·불허 양쪽 확인 |
 | `exposure/` | 노출·전환용 콘텐츠: 크몽 상세페이지 개선안(시장 관찰·제목/키워드·본문·이미지 구성), 숨고 업종별 견적 응답 6종+거절 템플릿, 사례형 글 2편 | 스니펫 근거(크몽 상위 10개), 수치는 데모 직접 실행값 |
+| `simulation/` | 수익 몬테카를로 시뮬레이션 + 체험 패키지 비교(손익분기·잠식률 민감도). 입력값은 전부 가정 | `tests/test_simulation.py` 10건 (도입 전 모델과 동일 재현 검사 포함) |
 | `sample_output/` | 샘플 실행 결과 (01 실사이트 2페이지 20건, 02 취합) | 깨끗한 venv에서 직접 실행 |
 | `templates/` | 견적서·문진표·면책 문구, 납품 가이드, 법적 유의, 알림 구현 예시, **납품 키트(`deliver_kit/`: run.bat·고객용 설명서)** | 문서 (run.bat은 Windows 미검증) |
 | `listing_kmong.md` / `listing_soomgo.md` | 상품·프로필 초안 | 본인 검토 필요 |
@@ -23,7 +25,7 @@
 ## 실행 / 검증
 ```bash
 pip install -r samples/requirements.txt -r requirements-dev.txt
-python -m pytest -q tests      # 현재 34건 (데모·도구 포함. 샘플 20건은 깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
+python -m pytest -q tests      # 현재 44건 (데모·도구·시뮬레이션 포함. 샘플 20건은 깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
 ```
 
 ## 알려진 제약
