@@ -9,7 +9,8 @@ const NM = path.join(__dirname, '..', 'node_modules');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, 'vendor'), { recursive: true });
 
-for (const f of ['index.html', 'bom.html', 'css', 'js']) {
+// 홈페이지 파일은 제외하고 뷰어 파일만 복사
+for (const f of ['bom.html', 'css/bom.css', 'js/bom.js']) {
   fs.cpSync(path.join(ROOT, f), path.join(OUT, f), { recursive: true });
 }
 

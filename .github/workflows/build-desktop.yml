@@ -4,9 +4,8 @@ on:
   push:
     paths:
       - 'bom.html'
-      - 'index.html'
-      - 'css/**'
-      - 'js/**'
+      - 'css/bom.css'
+      - 'js/bom.js'
       - 'desktop/**'
       - '.github/workflows/build-desktop.yml'
   workflow_dispatch:
