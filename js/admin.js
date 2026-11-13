@@ -293,6 +293,12 @@
       $('[data-sload]', sc).onclick = load;
       sbody.onchange = async (e) => { const t = e.target; if (!t.dataset.srow) return; try { const j = await api({ action: 'status', row: t.dataset.srow, status: t.value }); toast(j.ok ? '상태 변경됨' : '변경 실패: ' + (j.error || '')); } catch (err) { toast('변경 실패'); } };
       if (ls.get(TOK)) load();
+      // 실시간 연동: 게시판이 열려 있는 동안 60초마다 시트를 다시 읽음 (시트에서 바꾼 상태·새 문의 반영). 상태를 고르는 중이면 건너뜀
+      const poll = setInterval(() => {
+        if (!document.body.contains(sc)) return clearInterval(poll);
+        if (document.hidden || !$('[data-stok]', sc).value.trim() || sc.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return;
+        load().then(() => { const i = $('[data-sinfo]', sc); if (i && !/갱신/.test(i.textContent)) i.textContent += ` · ${new Date().toTimeString().slice(0, 8)} 자동 갱신`; });
+      }, 60000);
     },
 
     products(el) {
