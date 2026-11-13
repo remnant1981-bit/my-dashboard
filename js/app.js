@@ -51,10 +51,18 @@
     const title = dl ? dl.title : file === String((D.settings || {}).catalogPdf || '').split('#')[0] ? 'SMG Products Catalogue' : String(label || '').trim().slice(0, 80) || decodeURIComponent(file.split('/').pop());
     let who = {}; try { who = JSON.parse(sessionStorage.getItem('smg_dl_who') || '{}'); } catch (e) {}
     const ref = (() => { try { const r = document.referrer; return r && new URL(r).host !== location.host ? new URL(r).host : ''; } catch (e) { return ''; } })();
-    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '' };
+    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '', phone: who.phone || '' };
     try { fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(row), keepalive: true }); } catch (e) {}
   }
+  // 문의 제품의 카테고리 id (구글 시트 "제품 분류"·담당 팀 자동 배정용). 관심제품·견적품목에 들어 있는 모델명·제품명으로 찾음 (문의 내용은 오인 방지로 제외)
+  function inquiryCats(data) {
+    const txt = [data.product, data.items].filter(Boolean).join('\n').toLowerCase(); if (!txt) return '';
+    const ids = []; (D.products || []).forEach((p) => { const keys = [p.name, p.nameKo].concat(String(p.code || '').split(/\s*,\s*/)).filter((k) => k && k.length >= 2).map((k) => String(k).toLowerCase());
+      if (keys.some((k) => (k.length <= 4 ? new RegExp('(^|[^a-z0-9])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z0-9]|$)').test(txt) : txt.indexOf(k) >= 0)) && ids.indexOf(p.category) < 0) ids.push(p.category); });
+    return ids.join(',');
+  }
   async function sendInquiry(subject, data) {
+    const cat = inquiryCats(data); if (cat) data = Object.assign({}, data, { category: cat });
     saveToSheet(subject, data);
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
     const viaEndpoint = () => ep && postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data));

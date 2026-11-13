@@ -291,7 +291,7 @@
         } catch (err) { sbody.innerHTML = `<tr><td colspan="6" style="color:#d92d20">불러오기 실패: ${esc(err.message)} (비밀키·웹앱 배포 설정 확인)</td></tr>`; }
       };
       $('[data-sload]', sc).onclick = load;
-      sbody.onchange = async (e) => { const t = e.target; if (!t.dataset.srow) return; try { const j = await api({ action: 'status', row: t.dataset.srow, status: t.value }); toast(j.ok ? '상태 변경됨' : '변경 실패: ' + (j.error || '')); } catch (err) { toast('변경 실패'); } };
+      sbody.onchange = async (e) => { const t = e.target; if (!t.dataset.srow) return; try { const j = await api({ action: 'status', row: t.dataset.srow, status: t.value }); toast(j.ok ? '상태 변경됨' : '변경 실패: ' + (j.error || '')); if (!j.ok) load(); } catch (err) { toast('변경 실패'); load(); } };
       if (ls.get(TOK)) load();
       // 실시간 연동: 게시판이 열려 있는 동안 60초마다 시트를 다시 읽음 (시트에서 바꾼 상태·새 문의 반영). 상태를 고르는 중이면 건너뜀
       const poll = setInterval(() => {

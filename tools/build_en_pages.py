@@ -21,6 +21,7 @@ T = {
  '35년의 기술 축적': '35 years of expertise',
  'Honeywell Process Solutions 공식 인증 대리점(APAC), WIKA 판매대리점, REXA 파트너로서 글로벌 계측·제어 솔루션을 함께 공급합니다.': 'As an authorized Honeywell Process Solutions distributor (APAC), WIKA distributor and REXA partner, we supply global measurement and control solutions.',
  '온도센서 · 히터 · 피드스루 전문 제조기업 SMG 주식회사 에스엠지': 'Temperature sensors, heaters and feedthroughs manufacturer SMG Co., Ltd.',
+ '직급·직책': 'Job title', '예) 과장 / 구매팀장': 'e.g. Manager / Purchasing lead',
  '글로벌 파트너십': 'Global partnerships', '기업 정보': 'Company information', '기업개요': 'Overview',
  '방폭(ATEX·IECEx·KCs·KTL), 선급(BV), ASME PTC 19.3, UL 및 ISO 9001·14001': 'Explosion-proof (ATEX · IECEx · KCs · KTL), marine (BV), ASME PTC 19.3, UL and ISO 9001 · 14001',
  '연혁': 'History', '오시는 길': 'Location', '인증 현황': 'Certifications', '인증현황': 'Certifications', '파트너': 'Partners', '회사소개': 'About SMG', '회사소개 메뉴': 'Company menu',
@@ -40,7 +41,7 @@ T = {
  '[필수] 개인정보 수집·이용 동의': '[Required] Consent to collection and use of personal information', '견적 · 기술 문의': 'Quotation · Technical Inquiry', '견적문의': 'Contact',
  '관심 제품': 'Product of interest', '담당자명': 'Your name', '담당자명을 입력해 주세요': 'Please enter your name', '문의 내용': 'Message', '문의 내용을 입력해 주세요': 'Please enter your message',
  '문의 유형': 'Inquiry type', '문의 접수하기': 'Submit inquiry', '문의를 남겨주시면 담당 엔지니어가 빠르게 회신드립니다.': 'Leave your inquiry and our engineers will reply promptly.',
- '수집항목: 회사명, 담당자명, 연락처, 이메일 / 목적: 문의 응대 및 견적 회신 / 보유기간: 문의 처리 후 3년.': 'Items: company, name, phone, email / Purpose: responding to inquiries and quotations / Retention: 3 years after handling.',
+ '수집항목: 회사명, 담당자명, 연락처, 이메일 (선택: 직급·직책) / 목적: 문의 응대 및 견적 회신 / 보유기간: 문의 처리 후 3년.': 'Items: company, name, phone, email (optional: job title) / Purpose: responding to inquiries and quotations / Retention: 3 years after handling.',
  '연락처': 'Phone', '예상 수량 / 납기': 'Expected quantity / lead time', '올바른 연락처를 입력해 주세요': 'Please enter a valid phone number', '올바른 이메일을 입력해 주세요': 'Please enter a valid email',
  '이메일': 'Email', '전문 보기': 'Read policy', '회사명': 'Company', '회사명을 입력해 주세요': 'Please enter your company name',
  '사용 환경(온도·압력·매체), 요구 사양, 인증 필요 여부 등을 적어주시면 더 정확한 답변이 가능합니다.': 'Operating conditions (temperature, pressure, medium), required specifications and certification needs help us answer accurately.',
@@ -65,7 +66,7 @@ META = {
 }
 PRIVACY_EN = '''<main id="main"><section class="sec"><div class="container prose" style="max-width:860px">
 <p><b data-co="name"></b> (the "Company") protects the personal information of data subjects in accordance with the Personal Information Protection Act of Korea and discloses this privacy policy.</p>
-<h3 style="margin-top:36px">1. Information we collect</h3><p>When you submit a quotation or technical inquiry, we collect your company name, name, phone number, email and message.</p>
+<h3 style="margin-top:36px">1. Information we collect</h3><p>When you submit a quotation or technical inquiry, we collect your company name, name, phone number, email, (optionally) job title and message.</p>
 <h3 style="margin-top:28px">2. Purpose of use</h3><p>Used only to respond to inquiries, send quotations and provide technical consultation, and—when you request a download—to record the download and send product and technical information.</p>
 <h3 style="margin-top:28px">3. Retention period</h3><p>Retained for 3 years after the inquiry is handled and destroyed without delay thereafter, unless retention is required by law.</p>
 <h3 style="margin-top:28px">4. Disclosure to third parties</h3><p>We do not provide personal information to third parties except with your consent or as required by law.</p>
