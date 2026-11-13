@@ -70,7 +70,13 @@ function notifyAdmin_() { return NOTIFY_EMAIL || PropertiesService.getScriptProp
 function teamMails_() { // 설정 탭 "알림 팀"·"알림 메일" 표 → { 영업1팀: 'a@x.com,b@x.com' }
   const sh = ss_().getSheetByName(SET_SHEET), m = {}; if (!sh || sh.getLastRow() < 2) return m;
   const c = cols_(sh), t = c['알림 팀'], e = c['알림 메일']; if (!t || !e) return m;
-  sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach((v) => { const k = String(v[t - 1]).trim(), x = String(v[e - 1]).replace(/[;\s]+/g, ',').replace(/^,+|,+$/g, ''); if (k && x) m[k] = x; });
+  // 한 칸에 여러 메일(쉼표·세미콜론·줄바꿈 구분) 또는 같은 팀을 여러 줄로 적어도 모두 합침 (중복 제거)
+  sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach((v) => {
+    const k = String(v[t - 1]).trim(); if (!k) return;
+    String(v[e - 1]).split(/[,;\s]+/).map((x) => x.trim()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).forEach((x) => {
+      const l = m[k] ? m[k].split(',') : []; if (l.indexOf(x) < 0) l.push(x); m[k] = l.join(',');
+    });
+  });
   return m;
 }
 function fmtD_(d) { return d instanceof Date ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'MM-dd(E)') : String(d || ''); }
