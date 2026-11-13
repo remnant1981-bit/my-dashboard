@@ -14,6 +14,7 @@
  *  - 사내 담당에 이름을 넣으면 "접수 확인" 시각이 자동 기록됨 (= 담당자가 문의를 인지함)
  *  - 진행 단계(견적 검토·견적 발송·협의 중·수주·실주·보류)는 선택 입력. 바꿀 때마다 변경 로그에 이력이 남음
  *  - 새 문의: 담당 팀 알림 메일로 즉시 안내 / 평일 아침: 담당 미지정·오늘 기한·기한 초과 건을 팀별로 메일 (installTriggers 1회 실행)
+ *  - 회신 기한이 지났는데 회신일이 비어 있으면: 관리자(NOTIFY_EMAIL)에게 즉시 1회 메일 (1시간마다 확인, 08~19시)
  * 모든 탭은 "머리글 이름"으로 열을 찾으므로 열 순서를 바꿔도 됨 (머리글 글자는 바꾸지 말 것)
  *
  * 조회 비밀키(TOKEN)는 "프로젝트 설정 → 스크립트 속성"의 TOKEN 에 저장 (저장소·대화에 적지 말 것)
@@ -28,6 +29,7 @@ function catName_(v) { return String(v || '').split(',').map((x) => CAT[x.trim()
 const KEYS = Object.keys(FIELDS), LABELS = KEYS.map((k) => FIELDS[k]);
 const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일', next: '다음 조치일', updated: '최종 업데이트', ack: '접수 확인', stage: '진행 단계', due: '회신 기한', team: '담당 팀' };
 const SET_SHEET = '설정', REMIND_HOUR = 9; // 평일 아침 알림 시각(시)
+const WATCH_FROM = 8, WATCH_TO = 19;          // 기한 초과 즉시 알림을 보내는 시간대(시)
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -80,7 +82,7 @@ function teamMails_() { // 설정 탭 "알림 팀"·"알림 메일" 표 → { �
   return m;
 }
 function fmtD_(d) { return d instanceof Date ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'MM-dd(E)') : String(d || ''); }
-function mail_(to, subject, body) { if (!to) return; try { MailApp.sendEmail({ to: to, subject: String(subject).slice(0, 200), body: body }); } catch (err) {} }
+function mail_(to, subject, body) { if (!to) return false; try { MailApp.sendEmail({ to: to, subject: String(subject).slice(0, 200), body: body }); return true; } catch (err) { return false; } }
 function rowLink_(r) { return ss_().getUrl() + '#gid=' + sheet_().getSheetId() + '&range=A' + r; }
 function stampAck_(sh, c, r, o) { // 사내 담당이 처음 들어오면 접수 확인 시각 기록
   if (c[H.ack] && o[H.owner] && !o[H.ack]) sh.getRange(r, c[H.ack]).setValue(new Date());
@@ -275,7 +277,7 @@ function remindItems_() {
     const due = g(H.due), d = due instanceof Date ? new Date(due.getFullYear(), due.getMonth(), due.getDate()) : null;
     const kind = d && d < today ? '⛔ 기한 초과' : d && +d === +today ? '⚠ 오늘 기한' : !g(H.owner) ? '담당 미지정' : '';
     if (!kind) return null;
-    return { kind: kind, row: i + 2, team: String(g(H.team) || '(팀 미지정)'), company: g(FIELDS.company), due: fmtD_(due), owner: g(H.owner) || '미지정', stage: g(H.stage) || '' };
+    return { kind: kind, row: i + 2, at: g(FIELDS.time), team: String(g(H.team) || '(팀 미지정)'), company: g(FIELDS.company), due: fmtD_(due), owner: g(H.owner) || '미지정', stage: g(H.stage) || '' };
   }).filter(Boolean);
 }
 function remindBody_(items) {
@@ -292,8 +294,25 @@ function dailyReminder() {
   Object.keys(teams).forEach((t) => { if (mails[t]) mail_(mails[t], '[회신 기한 알림] ' + t + ' ' + teams[t].length + '건', remindBody_(teams[t])); });
   mail_(notifyAdmin_(), '[회신 기한 알림] 전체 ' + items.length + '건', remindBody_(items));
 }
-/** 처음 한 번 실행: 평일 아침 알림 예약 (다시 실행해도 중복 생성 안 됨) */
+// ── 기한 초과 즉시 알림: 회신 기한이 지난 미회신 건 → 관리자에게 건별 1회 ──
+function overdueKey_(x) { return (x.at instanceof Date ? x.at.getTime() : String(x.at)) + '|' + x.company; }
+function overdueWatch() {
+  const h = new Date().getHours(); if (h < WATCH_FROM || h > WATCH_TO) return;
+  const to = notifyAdmin_(); if (!to) return;
+  const p = PropertiesService.getScriptProperties();
+  let sent = []; try { sent = JSON.parse(p.getProperty('OVERDUE_SENT') || '[]'); } catch (err) {}
+  const items = remindItems_().filter((x) => x.kind === '⛔ 기한 초과');
+  const fresh = items.filter((x) => sent.indexOf(overdueKey_(x)) < 0);
+  if (fresh.length) {
+    const names = fresh.slice(0, 3).map((x) => x.company).join(', ') + (fresh.length > 3 ? ' 외 ' + (fresh.length - 3) + '건' : '');
+    const ok = mail_(to, '[⛔ 회신 기한 초과] ' + names, '회신 기한이 지났는데 "회신일"이 비어 있는 건입니다. 담당 팀·사내 담당 확인이 필요합니다.\n\n' + remindBody_(fresh));
+    if (!ok) return; // 발송 실패 → 다음 확인 때 다시 시도
+  }
+  p.setProperty('OVERDUE_SENT', JSON.stringify(items.map(overdueKey_))); // 지금 초과 중인 건만 보관 (회신되면 자동 정리)
+}
+/** 처음 한 번 실행: 평일 아침 알림 + 기한 초과 확인(1시간마다) 예약 (다시 실행해도 중복 생성 안 됨) */
 function installTriggers() {
-  ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === 'dailyReminder').forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.getProjectTriggers().filter((t) => ['dailyReminder', 'overdueWatch'].indexOf(t.getHandlerFunction()) >= 0).forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('dailyReminder').timeBased().everyDays(1).atHour(REMIND_HOUR).create();
+  ScriptApp.newTrigger('overdueWatch').timeBased().everyHours(1).create();
 }
