@@ -10,6 +10,13 @@
   - 문의 1건 = '문의' 1행. 위험 건이라 거절했으면 '거절' 행을 추가로 적음
   - 주문이 들어오면 '수주' 행(패키지 필수). 체험 고객이 다시 주문했으면 '수주' 행과 함께 '재의뢰' 행도 적음
   - 구매확정(정산 확정)되면 '완료' 행(패키지·판매금액 필수) / 리뷰가 달리면 '리뷰' 행
+  - 숨고에서 견적 발송 비용이 실제로 차감되면 '견적비용' 행(판매금액 칸에 비용을 만원 단위로, 예: 3,000원 → 0.3)
+
+채널별 실수령 (기록분 집계)
+  - 채널에 '크몽'이 들어가면 크몽 공식 수수료(구간제) + 원천징수 3.3%(가정) 차감
+  - 그 밖의 채널(숨고·직거래 등)은 거래 수수료 없이 원천징수 3.3%(가정)만 차감하고, '견적비용' 행을 빼서 계산
+    (숨고 공식 안내 2026-11-14 확인: 최종 거래액 수수료 없음, 견적은 고객이 열람했을 때만 비용 부과, 48시간 미열람 시 환급)
+  - 앞으로의 예측(forecast)은 시뮬레이션 모델을 쓰므로 모든 판매에 크몽 수수료를 적용함 (숨고 비중이 크면 예측이 보수적)
 
 추정 방법 (모두 근사이며, 표본이 작으면 크게 흔들림)
   - 주당 문의율 = 문의 수 / 관측 주 수. 90% 구간은 포아송 정규근사
@@ -37,7 +44,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import revenue_sim as sim  # noqa: E402
 
 COLUMNS = ["날짜", "채널", "유형", "패키지", "판매금액(만원)", "비고"]
-TYPES = ("문의", "거절", "수주", "완료", "리뷰", "재의뢰")
+TYPES = ("문의", "거절", "수주", "완료", "리뷰", "재의뢰", "견적비용")
+PRICED_TYPES = ("완료", "견적비용")  # 판매금액(만원) 칸이 필수인 유형
 PACKAGES = ("체험", "STANDARD", "DELUXE", "PREMIUM")
 PRIOR_ORDERS = 2.0  # 패키지 비중에 섞는 기본 비중의 가상 건수
 # 표본이 작을 때 섞는 기본 가정: (값, 가상 건수)
@@ -86,13 +94,32 @@ def read_log(path) -> pd.DataFrame:
             except ValueError:
                 errors.append(f"{line}행: 판매금액 '{r['판매금액(만원)']}'이 양수 숫자가 아님")
                 price = None
-        if r["유형"] == "완료" and price is None and not any(e.startswith(f"{line}행: 판매금액") for e in errors):
-            errors.append(f"{line}행: '완료'에는 판매금액(만원) 필요")
+        if r["유형"] in PRICED_TYPES and price is None and not any(e.startswith(f"{line}행: 판매금액") for e in errors):
+            what = "판매금액" if r["유형"] == "완료" else "견적 비용(만원, 예: 3,000원 → 0.3)"
+            errors.append(f"{line}행: '{r['유형']}'에는 {what}을 판매금액(만원) 칸에 적어야 함")
         prices.append(price)
     if errors:
         raise ValueError("기록 오류:\n  " + "\n  ".join(errors))
     df["date"], df["price"] = dates, prices
     return df.reset_index(drop=True)
+
+
+def sale_net(channel: str, price: float) -> float:
+    """완료 1건의 실수령(만원). 크몽은 공식 수수료 차감, 그 밖의 채널은 거래 수수료 없음. 둘 다 원천징수(가정) 차감."""
+    return sim.net_of(price) if "크몽" in channel else price * (1 - sim.TAX)
+
+
+def channel_summary(df: pd.DataFrame) -> list[dict]:
+    rows = []
+    for ch in sorted(set(df["채널"]) - {""}) + ([""] if (df["채널"] == "").any() else []):
+        d = df[df["채널"] == ch]
+        done = d[d["유형"] == "완료"]
+        cost = float(d.loc[d["유형"] == "견적비용", "price"].sum())
+        net = float(sum(sale_net(ch, p) for p in done["price"])) - cost
+        rows.append({"채널": ch or "(미기재)", "문의": int((d["유형"] == "문의").sum()),
+                     "수주": int((d["유형"] == "수주").sum()), "완료": len(done),
+                     "매출": float(done["price"].sum()), "견적비용": cost, "실수령": net})
+    return rows
 
 
 def wilson(k: int, n: int, z: float = Z90):
@@ -136,6 +163,7 @@ class Estimate:
     reviews_now: int
     net_now: float
     warnings: list
+    channels: list
 
 
 def estimate(df: pd.DataFrame, start: dt.date | None = None, until: dt.date | None = None,
@@ -186,7 +214,8 @@ def estimate(df: pd.DataFrame, start: dt.date | None = None, until: dt.date | No
     upsell_used = shrink(min(n["재의뢰"], trial_done), trial_done, PRIOR_UPSELL) if trial else 0.0
 
     reviews_now = n["리뷰"]
-    net_now = float(sum(sim.net_of(p) for p in done["price"]))
+    channels = channel_summary(df)
+    net_now = float(sum(c["실수령"] for c in channels))
 
     if n["문의"] < SMALL_INQUIRIES or weeks < SMALL_WEEKS:
         warnings.append(f"표본이 작음(문의 {n['문의']}건, {weeks:.1f}주) — 추정과 예측이 크게 흔들림. "
@@ -195,7 +224,7 @@ def estimate(df: pd.DataFrame, start: dt.date | None = None, until: dt.date | No
         warnings.append("유효 문의가 없어 전환율을 추정할 수 없음 — 예측은 기본 가정(15%)으로 대체")
     return Estimate(start, end, weeks, n, inq_rate, inq_ci, reject, reject_used, conv, conv_used, conv_ci,
                     avg_rev, base_inq, p0, tuple(float(x) for x in mix_arr), prices, trial, upsell, upsell_used,
-                    reviews_now, net_now, warnings)
+                    reviews_now, net_now, warnings, channels)
 
 
 def _packages(est: Estimate) -> sim.Packages:
@@ -244,7 +273,11 @@ def report(est: Estimate, fc, weeks: int, target: float) -> str:
               "| 문의 | 거절 | 수주 | 재의뢰 | 완료 | 리뷰 | 누적 실수령(만원) |",
               "|---|---|---|---|---|---|---|",
               f"| {n['문의']} | {n['거절']} | {n['수주']} | {n['재의뢰']} | {n['완료']} | {n['리뷰']} | {est.net_now:.1f} |",
-              "", "## 추정값 (90% 구간은 근사)",
+              "", "### 채널별 (실수령 = 크몽은 공식 수수료 차감, 그 밖의 채널은 견적비용 차감. 원천징수 3.3% 가정 포함)",
+              "| 채널 | 문의 | 수주 | 완료 | 매출(만원) | 견적비용(만원) | 실수령(만원) |", "|---|---|---|---|---|---|---|"]
+    for c in est.channels:
+        lines.append(f"| {c['채널']} | {c['문의']} | {c['수주']} | {c['완료']} | {c['매출']:.1f} | {c['견적비용']:.2f} | {c['실수령']:.1f} |")
+    lines += ["", "## 추정값 (90% 구간은 근사)",
               "| 항목 | 실측 | 90% 구간 | 예측에 쓴 값 | 시뮬레이션 기본 가정(참고) |", "|---|---|---|---|---|",
               f"| 주당 문의 | {est.inq_rate:.2f} | {est.inq_rate_ci[0]:.2f} ~ {est.inq_rate_ci[1]:.2f} | 하한·실측·상한 3가지 | 보수 0.3 / 기본 0.7 / 낙관 1.5 |",
               f"| 전환율(신규 수주/유효 문의) | {'추정 불가' if est.conv is None else pct(est.conv)} | "
@@ -262,7 +295,7 @@ def report(est: Estimate, fc, weeks: int, target: float) -> str:
     for r in fc:
         lines.append(f"| {r['구분']} | {r['주당 문의']:.2f} | {pct(r['목표 달성 확률'])} | "
                      f"{r['p10']:.0f} / {r['중앙']:.0f} / {r['p90']:.0f} |")
-    lines += ["", "※ 수수료는 크몽 공식 구간제, 원천징수 3.3%는 가정. 리뷰 효과·작업일·정산 지연 등 모델 구조는 "
+    lines += ["", "※ 예측은 모든 판매에 크몽 공식 수수료를 적용함(숨고 비중이 크면 보수적, 단 앞으로의 숨고 견적 비용은 미반영). 원천징수 3.3%는 가정. 리뷰 효과·작업일·정산 지연 등 모델 구조는 "
               "`revenue_sim.py`의 가정을 그대로 씀. 예측은 '지금 추세가 유지된다면'의 값이며 보장이 아님."]
     return "\n".join(lines) + "\n"
 

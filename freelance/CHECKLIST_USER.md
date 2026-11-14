@@ -13,6 +13,8 @@
    - 등록 후 크몽 [판매 관리 > 수익 관리 > 수익금 계산기]로 실제 수수료 확인 (문서의 21.67%는 공식 정책 기준 계산값)
    - **등록일부터 `tracking/log.csv`에 문의·수주·완료·리뷰를 한 줄씩 기록** (양식·규칙: `tracking/README.md`, 개인정보·의뢰 내용은 적지 않음)
    - 2~4주 뒤 `python simulation/calibrate.py tracking/log.csv --start <등록일>`로 실측 기반 예측 확인 (문의 20건·4주 전에는 방향만 참고)
-6. `listing_soomgo.md`로 프로필 등록, 문의가 오면 `exposure/soomgo_quote_variants.md`의 업종별 응답 사용 (사례형 글 `exposure/case_posts.md`는 선택 게시)
+6. **`listing_final_soomgo.md`를 붙여 넣어** 숨고 프로필·서비스 등록 (필수 인증 서비스 해당 여부·카테고리는 등록 화면에서 확인)
+   - 숨고는 거래 수수료가 없고 **견적이 열람될 때마다 캐시가 차감됨** → 견적 화면의 실제 비용을 확인하고 같은 문서 5번 기준으로 보낼지 결정
+   - 차감된 견적 비용은 `tracking/log.csv`에 `견적비용` 행으로 기록 (업종별 문구: `exposure/soomgo_quote_variants.md`)
 7. 첫 문의가 오면 `templates/quote_and_scope.md` 문진표 발송 → 응답을 이 세션에 전달하면 제작·견적 초안은 내가 처리
 8. 세무: `contract_checklist.md` 3번 참고 후 세무사 확인

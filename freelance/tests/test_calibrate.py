@@ -171,3 +171,34 @@ def test_small_sample_extremes_are_shrunk(cal, tmp_path):
 def test_large_sample_converges_to_observed(cal, tmp_path):
     est = cal.estimate(cal.read_log(write(tmp_path, synthetic_rows(weeks=60))))
     assert abs(est.conv_used - est.conv) < 0.02 and abs(est.reject_used - est.reject) < 0.02
+
+
+def test_channel_specific_net_and_quote_costs(cal, tmp_path):
+    rows = [
+        "2026-12-01,크몽,완료,DELUXE,15,",
+        "2026-12-02,숨고,견적비용,,0.3,열람된 견적",
+        "2026-12-03,숨고,견적비용,,0.3,",
+        "2026-12-04,숨고,완료,DELUXE,15,",
+        "2026-12-05,직거래,완료,STANDARD,8,",
+    ]
+    est = cal.estimate(cal.read_log(write(tmp_path, rows)))
+    by = {c["채널"]: c for c in est.channels}
+    tax = cal.sim.TAX
+    assert by["크몽"]["실수령"] == pytest.approx(cal.sim.net_of(15.0))          # 크몽: 공식 수수료 + 원천징수
+    assert by["숨고"]["실수령"] == pytest.approx(15.0 * (1 - tax) - 0.6)        # 숨고: 수수료 없음, 견적비용 차감
+    assert by["숨고"]["견적비용"] == pytest.approx(0.6)
+    assert by["직거래"]["실수령"] == pytest.approx(8.0 * (1 - tax))
+    assert est.net_now == pytest.approx(sum(c["실수령"] for c in est.channels))
+    assert by["숨고"]["실수령"] > by["크몽"]["실수령"]  # 같은 15만원이면 숨고가 더 남음 (견적 2건 비용 감안해도)
+
+
+def test_quote_cost_row_requires_amount(cal, tmp_path):
+    with pytest.raises(ValueError, match="견적 비용"):
+        cal.read_log(write(tmp_path, ["2026-12-02,숨고,견적비용,,,"]))
+
+
+def test_report_has_channel_table(cal, tmp_path):
+    rows = synthetic_rows(weeks=4) + ["2026-12-10,숨고,견적비용,,0.5,"]
+    est = cal.estimate(cal.read_log(write(tmp_path, rows)))
+    text = cal.report(est, cal.forecast(est, weeks=4, runs=100), 4, 100.0)
+    assert "### 채널별" in text and "| 숨고 |" in text and "| 크몽 |" in text
