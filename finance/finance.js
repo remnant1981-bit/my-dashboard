@@ -3,12 +3,14 @@
   'use strict';
   var KEY = 'smg-finance-v1';
   var $ = function (s) { return document.querySelector(s); };
-  var state = load();
+  var MKEY = KEY + '-mask', BKEY = KEY + '-backup';
+  var state = { loans: [], exps: [] };
   var mask = false;
+  try { mask = localStorage.getItem(MKEY) === '1'; } catch (e) {}
 
   /* ---------- 저장 ---------- */
   function load() {
-    try { var d = JSON.parse(localStorage.getItem(KEY) || ''); if (d && Array.isArray(d.loans)) return { loans: d.loans, exps: d.exps || [] }; } catch (e) {}
+    try { var d = JSON.parse(localStorage.getItem(KEY) || ''); if (d && Array.isArray(d.loans)) return { loans: d.loans.map(clean), exps: (Array.isArray(d.exps) ? d.exps : []).map(cleanExp) }; } catch (e) {}
     return { loans: [], exps: [] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { alert('브라우저 저장소에 저장하지 못함. 백업 파일을 내려받아 보관하세요.'); } }
@@ -16,7 +18,18 @@
 
   /* ---------- 유틸 ---------- */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function won(n) { return Math.round(n).toLocaleString('ko-KR') + '원'; }
+  function won(n) { return (Math.round(n) || 0).toLocaleString('ko-KR') + '원'; }
+  function krw(n) {
+    n = Math.round(n); if (!(n > 0)) return '';
+    var e = Math.floor(n / 1e8), m = Math.floor((n % 1e8) / 1e4), r = n % 1e4;
+    return '= ' + [e ? e.toLocaleString('ko-KR') + '억' : '', m ? m.toLocaleString('ko-KR') + '만' : '', r ? r.toLocaleString('ko-KR') : ''].filter(Boolean).join(' ') + '원';
+  }
+  function isDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v)); }
+  var toastT;
+  function toast(msg) {
+    var el = $('#toast'); if (!el) return;
+    el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('on'); }, 2200);
+  }
   function amt(n) { return '<span class="amt">' + won(n) + '</span>'; }
   function p2(n) { return n < 10 ? '0' + n : '' + n; }
   function ymd(y, m, d) { return y + '-' + p2(m) + '-' + p2(d); }
@@ -57,11 +70,11 @@
       else prin = Math.min(bal, Math.max(0, pmt - interest));
       if (k === n) prin = bal;
       bal -= prin;
-      var row = { k: k, date: date, interest: interest, principal: prin, prepay: 0, balance: bal };
+      var row = { k: k, date: date, interest: interest, principal: prin, prepay: 0, balance: bal, pre: [] };
       while (pi < pre.length && pre[pi].date <= date) {
         var a = Math.min(pre[pi].amount, bal);
         if (a > 0) {
-          bal -= a; row.prepay += a; row.balance = bal;
+          bal -= a; row.prepay += a; row.balance = bal; row.pre.push({ date: pre[pi].date, amount: a });
           if (bal > 0 && pre[pi].mode === 'payment') {
             var left = n - k, am = Math.max(1, left - Math.max(0, g - k));
             pmt = pmtEqual(bal, r, am); unit = Math.round(bal / am);
@@ -78,12 +91,18 @@
     var rows = schedule(L, L.prepays), t = today(), paid = rows.filter(function (r) { return r.date <= t; });
     var bal = paid.length ? paid[paid.length - 1].balance : L.principal;
     var next = rows.filter(function (r) { return r.date > t; })[0];
+    /* 다음 납부일 전에 이미 실행한 중도상환은 잔액에 즉시 반영 */
+    if (next) next.pre.forEach(function (p) { if (p.date <= t) bal -= p.amount; });
     return { rows: rows, bal: bal, next: next, paidCnt: paid.length, paidInt: sum(paid, 'interest'), totalInt: sum(rows, 'interest'), remInt: sum(rows.filter(function (r) { return r.date > t; }), 'interest') };
   }
   var TYPE = { equal: '원리금균등', principal: '원금균등', bullet: '만기일시' };
 
   /* ---------- 렌더 ---------- */
   function render() {
+    try { renderAll(); $('#err').hidden = true; backupInfo(); }
+    catch (e) { $('#err').hidden = false; $('#err').textContent = '데이터를 표시하는 중 오류가 발생함. 아래 “백업 내려받기”로 보관한 뒤 문제 항목을 수정하거나 전체 삭제 후 다시 입력하세요. (' + e.message + ')'; }
+  }
+  function renderAll() {
     var open = [];
     document.querySelectorAll('.loan').forEach(function (c) { c.querySelectorAll('details').forEach(function (d, i) { if (d.open) open.push(c.dataset.id + ':' + i); }); });
     document.body.classList.toggle('mask', mask);
@@ -98,7 +117,7 @@
     $('#summary').innerHTML =
       '<div class="card hl"><span>총 대출 잔액</span><b>' + amt(totalBal) + '</b></div>' +
       '<div class="card"><span>이번 달 대출 상환액</span><b>' + amt(monthPay) + '</b></div>' +
-      '<div class="card hl"><span>지금까지 낸 이자</span><b>' + amt(paidInt) + '</b></div>' +
+      '<div class="card hl"><span>지금까지 낸 이자(스케줄 기준)</span><b>' + amt(paidInt) + '</b></div>' +
       (hasAct ? '<div class="card hl"><span>실제 낸 이자(기록)</span><b>' + amt(actInt) + '</b></div>' : '') +
       '<div class="card"><span>남은 이자 합계</span><b>' + amt(remInt) + '</b></div>' +
       '<div class="card"><span>월 고정지출(연납 월환산)</span><b>' + amt(fixedMonth) + '</b></div>';
@@ -109,15 +128,15 @@
       var y = sy + Math.floor((sm - 1 + i) / 12), m = (sm - 1 + i) % 12 + 1, ym = y + '-' + p2(m), v = 0;
       sts.forEach(function (x) { x.s.rows.forEach(function (r) { if (r.date.slice(0, 7) === ym) v += r.interest + r.principal; }); });
       state.exps.forEach(function (e) { if (e.cycle !== 'year' || +e.month === m) v += e.amount; });
-      bars.push({ m: m, v: v }); max = Math.max(max, v);
+      bars.push({ y: y, m: m, v: v }); max = Math.max(max, v);
     }
     $('#forecast').innerHTML = (state.loans.length || state.exps.length) ?
       '<div class="fc">' + bars.map(function (b) {
-        return '<div><em class="amt">' + (b.v >= 10000 ? Math.round(b.v / 10000).toLocaleString('ko-KR') + '만' : Math.round(b.v)) + '</em><i style="height:' + Math.max(2, b.v / max * 100) + '%"></i>' + b.m + '월</div>';
-      }).join('') + '</div><p class="hint">대출 원리금 + 고정지출 합계 (중도상환 제외)</p>' : '<p class="empty">대출 또는 고정지출을 추가하면 표시됨</p>';
+        return '<div title="' + b.y + '년 ' + b.m + '월: ' + won(b.v) + '"><em class="amt">' + (b.v >= 10000 ? Math.round(b.v / 10000).toLocaleString('ko-KR') + '만' : Math.round(b.v) + '원') + '</em><i style="height:' + Math.max(2, b.v / max * 100) + '%"></i>' + (b.m === 1 ? "'" + String(b.y).slice(2) + ' ' : '') + b.m + '월</div>';
+      }).join('') + '</div><p class="hint">대출 원리금 + 고정지출 합계 (중도상환 제외) · 단위: 만원</p>' : '<p class="empty">대출 또는 고정지출을 추가하면 표시됨</p>';
 
     $('#loan-cnt').textContent = state.loans.length ? state.loans.length + '건' : '';
-    $('#loans').innerHTML = sts.length ? sts.map(loanCard).join('') : '<p class="empty">등록된 대출 없음 — 우측 상단 “+ 대출 추가”</p>';
+    $('#loans').innerHTML = sts.length ? sts.map(loanCard).join('') : '<div class="empty"><p><b>등록된 대출 없음</b></p><p>① 우측 상단 “+ 대출 추가”로 원금·금리·기간 입력 → ② 상환 스케줄·낸 이자 확인 → ③ 실제 납부 기록·금리 변경·중도상환/대환 비교</p><p>먼저 둘러보려면 아래 “예시 데이터 넣기”</p></div>';
     open.forEach(function (k) { var p = k.split(':'), c = document.querySelector('.loan[data-id="' + p[0] + '"]'); if (c && c.querySelectorAll('details')[+p[1]]) c.querySelectorAll('details')[+p[1]].open = true; });
     $('#exps').innerHTML = state.exps.length ? '<div class="list">' + state.exps.map(function (e) {
       return '<div class="item"><div><b>' + esc(e.name) + '</b> <small>' + (e.cycle === 'year' ? '연 1회 · ' + e.month + '월' : '매월') + '</small></div><div><b>' + amt(e.amount) +
@@ -138,11 +157,11 @@
     }
     return '<details><summary>실제 납부 기록 (' + A.length + '건)</summary><div class="sim">' +
       '<label class="f">납부일<input type="date" data-a="date" value="' + today() + '"></label>' +
-      '<label class="f">납부 총액(원)<input type="number" min="0" data-a="amount" inputmode="numeric"></label>' +
-      '<label class="f">그 중 이자(원, 선택)<input type="number" min="0" data-a="interest" inputmode="numeric"></label>' +
+      '<label class="f">납부 총액(원)<input type="number" min="0" data-a="amount" data-krw inputmode="numeric"><small class="krw"></small></label>' +
+      '<label class="f">그 중 이자(원, 선택)<input type="number" min="0" data-a="interest" data-krw inputmode="numeric"><small class="krw"></small></label>' +
       '<button class="b b-pri" data-act="add-act" data-id="' + L.id + '">기록 추가</button></div>' + cmp +
       (A.length ? '<div class="tw"><table><thead><tr><th>납부일</th><th>납부액</th><th>이자</th><th></th></tr></thead><tbody>' + A.map(function (a) {
-        return '<tr><td>' + a.date + '</td><td>' + amt(a.amount) + '</td><td>' + (a.interest == null ? '-' : amt(a.interest)) + '</td><td><a href="#" data-act="del-act" data-id="' + L.id + '" data-d="' + a.date + '" data-m="' + a.amount + '">삭제</a></td></tr>';
+        return '<tr><td>' + a.date + '</td><td>' + amt(a.amount) + '</td><td>' + (a.interest == null ? '-' : amt(a.interest)) + '</td><td><button type="button" class="lnk" data-act="del-act" data-id="' + L.id + '" data-d="' + a.date + '" data-m="' + a.amount + '">삭제</button></td></tr>';
       }).join('') + '</tbody></table></div>' : '') + '</details>';
   }
 
@@ -159,7 +178,7 @@
       '<button class="b b-pri" data-act="add-rate" data-id="' + L.id + '">추가</button></div>' +
       '<p class="hint">초기 금리 ' + L.rate + '% → 각 적용 시작일 이후 납부 기간부터 새 금리 적용. 원리금균등은 금리 변경 시 월 납부액을 남은 기간 기준으로 재계산함.</p>' +
       (R.length ? '<div class="tw"><table><thead><tr><th>적용 시작일</th><th>금리</th><th></th></tr></thead><tbody>' + R.map(function (c) {
-        return '<tr><td>' + c.date + '</td><td>' + c.rate + '%</td><td><a href="#" data-act="del-rate" data-id="' + L.id + '" data-d="' + c.date + '" data-m="' + c.rate + '">삭제</a></td></tr>';
+        return '<tr><td>' + c.date + '</td><td>' + c.rate + '%</td><td><button type="button" class="lnk" data-act="del-rate" data-id="' + L.id + '" data-d="' + c.date + '" data-m="' + c.rate + '">삭제</button></td></tr>';
       }).join('') + '</tbody></table></div>' : '') + '</details>';
   }
 
@@ -167,7 +186,7 @@
     var L = x.L, s = x.s, pct = Math.min(100, Math.round((1 - s.bal / L.principal) * 100));
     var end = s.rows.length ? s.rows[s.rows.length - 1].date : '-';
     var pre = (L.prepays || []).map(function (p, i) {
-      return '<span>' + p.date + ' ' + amt(p.amount) + ' (' + (p.mode === 'term' ? '기간단축' : '상환액감소') + ') <a href="#" data-act="del-pre" data-id="' + L.id + '" data-i="' + i + '">삭제</a></span>';
+      return '<span>' + p.date + ' ' + amt(p.amount) + ' (' + (p.mode === 'term' ? '기간단축' : '상환액감소') + ') <button type="button" class="lnk" data-act="del-pre" data-id="' + L.id + '" data-i="' + i + '">삭제</button></span>';
     }).join('');
     return '<article class="loan" data-id="' + L.id + '">' +
       '<div class="loan-h"><div><b>' + esc(L.name) + '</b><span class="tag">' + TYPE[L.type] + '</span>' + (L.calc === 'daily' ? '<span class="tag">일할</span>' : '') + (s.bal <= 0 ? '<span class="tag done">완납</span>' : '') +
@@ -175,11 +194,11 @@
       '<div class="row"><button class="b b-line b-sm" data-act="edit-loan" data-id="' + L.id + '">수정</button></div></div>' +
       '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="kv"><div><span>잔액</span><b>' + amt(s.bal) + '</b></div><div><span>상환율</span><b>' + pct + '% (' + s.paidCnt + '/' + s.rows.length + '회)</b></div>' +
-      '<div><span>다음 납부</span><b>' + (s.next ? s.next.date.slice(5) + ' ' + amt(s.next.interest + s.next.principal) : '-') + '</b></div>' +
-      '<div><span>지금까지 낸 이자</span><b>' + amt(s.paidInt) + '</b></div><div><span>남은 이자</span><b>' + amt(s.remInt) + '</b></div><div><span>만기</span><b>' + end + '</b></div><div><span>총 이자</span><b>' + amt(s.totalInt) + '</b></div></div>' +
+      '<div><span>다음 납부</span><b>' + (s.next ? s.next.date.slice(5) + ' <small>(D-' + daysBetween(today(), s.next.date) + ')</small> ' + amt(s.next.interest + s.next.principal) : '-') + '</b></div>' +
+      '<div><span>낸 이자(스케줄 기준)</span><b>' + amt(s.paidInt) + '</b></div><div><span>남은 이자</span><b>' + amt(s.remInt) + '</b></div><div><span>만기</span><b>' + end + '</b></div><div><span>총 이자 (원금 대비 ' + (s.totalInt / L.principal * 100).toFixed(1) + '%)</span><b>' + amt(s.totalInt) + '</b></div></div>' +
       (pre ? '<div class="pre">중도상환 기록: ' + pre + '</div>' : '') +
       '<details><summary>중도상환 시뮬레이터</summary><div class="sim">' +
-      '<label class="f">상환 금액(원)<input type="number" min="0" step="10000" data-s="amt" inputmode="numeric"></label>' +
+      '<label class="f">상환 금액(원)<input type="number" min="0" step="10000" data-s="amt" data-krw inputmode="numeric"><small class="krw"></small></label>' +
       '<label class="f">상환일<input type="date" data-s="date" value="' + today() + '"></label>' +
       '<label class="f">방식<select data-s="mode"><option value="term">기간 단축</option><option value="payment">월 상환액 감소</option></select></label>' +
       '<label class="f">수수료율(%)<input type="number" min="0" step="0.1" value="0" data-s="fee" inputmode="decimal"></label>' +
@@ -187,7 +206,7 @@
       actualsHtml(L, s) + ratesHtml(L) +
       '<details><summary>금리 대환(갈아타기) 비교</summary><div class="sim">' +
       '<label class="f">새 금리(연 %)<input type="number" min="0" step="0.01" data-r="rate" inputmode="decimal"></label>' +
-      '<label class="f">대환 비용(원, 중도상환수수료 등)<input type="number" min="0" step="10000" value="0" data-r="fee" inputmode="numeric"></label>' +
+      '<label class="f">대환 비용(원, 중도상환수수료 등)<input type="number" min="0" step="10000" value="0" data-r="fee" data-krw inputmode="numeric"><small class="krw"></small></label>' +
       '<button class="b b-pri" data-act="refi" data-id="' + L.id + '">비교</button><div class="out" hidden></div></div></details>' +
       '<details><summary>상환 스케줄 (' + s.rows.length + '회)</summary><div class="tw"><table><thead><tr><th>회차</th><th>납부일</th><th>납부액</th><th>원금</th><th>이자</th><th>중도상환</th><th>잔액</th></tr></thead><tbody>' +
       s.rows.map(function (r) {
@@ -198,49 +217,57 @@
 
   /* ---------- 폼 ---------- */
   var dlg = $('#dlg');
+  if (!dlg.close) dlg.close = function () { dlg.removeAttribute('open'); };
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
   function openForm(html, onSubmit) {
     dlg.innerHTML = html;
     var f = dlg.querySelector('form');
     f.addEventListener('submit', function (e) { e.preventDefault(); if (onSubmit(new FormData(f)) !== false) dlg.close(); });
     dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
-    dlg.showModal();
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    var first = dlg.querySelector('input'); if (first && !first.value) first.focus();
   }
-  function field(label, name, val, extra) { return '<label class="f">' + label + '<input name="' + name + '" value="' + esc(val) + '" ' + (extra || '') + '></label>'; }
+  function field(label, name, val, extra) { var k = /data-krw/.test(extra || ''); return '<label class="f">' + label + '<input name="' + name + '" value="' + esc(val) + '" autocomplete="off" ' + (extra || '') + '>' + (k ? '<small class="krw">' + krw(num(val)) + '</small>' : '') + '</label>'; }
   function loanForm(id) {
     var L = state.loans.filter(function (x) { return x.id === id; })[0] || { name: '', lender: '', principal: '', rate: '', term: '', grace: 0, type: 'equal', start: today(), payDay: 25 };
     openForm('<form><h3>' + (id ? '대출 수정' : '대출 추가') + '</h3>' +
       field('대출명', 'name', L.name, 'required placeholder="예: 시설자금 대출"') + field('금융기관', 'lender', L.lender, 'placeholder="예: OO은행"') +
-      '<div class="g2">' + field('대출 원금(원)', 'principal', L.principal, 'type="number" min="1" required inputmode="numeric"') + field('연 이율(%)', 'rate', L.rate, 'type="number" min="0" step="0.01" required inputmode="decimal"') + '</div>' +
+      '<div class="g2">' + field('대출 원금(원)', 'principal', L.principal, 'type="number" min="1" step="1" required data-krw inputmode="numeric"') + field('연 이율(%)', 'rate', L.rate, 'type="number" min="0" max="100" step="0.001" required inputmode="decimal"') + '</div>' +
       '<div class="g2">' + field('대출 기간(개월)', 'term', L.term, 'type="number" min="1" max="600" required inputmode="numeric"') + field('거치 기간(개월)', 'grace', L.grace, 'type="number" min="0" inputmode="numeric"') + '</div>' +
       '<label class="f">상환 방식<select name="type">' + Object.keys(TYPE).map(function (k) { return '<option value="' + k + '"' + (L.type === k ? ' selected' : '') + '>' + TYPE[k] + '</option>'; }).join('') + '</select></label>' +
       '<label class="f">이자 계산 방식<select name="calc"><option value="month"' + (L.calc !== 'daily' ? ' selected' : '') + '>월 단위(연이율÷12)</option><option value="daily"' + (L.calc === 'daily' ? ' selected' : '') + '>일할계산(실제 일수/365, 원 미만 절사)</option></select></label>' +
       '<div class="g2">' + field('대출 실행일', 'start', L.start, 'type="date" required') + field('매월 납부일', 'payDay', L.payDay, 'type="number" min="1" max="31" required inputmode="numeric"') + '</div>' +
+      '<p class="hint">첫 납부는 실행일 다음 달의 납부일 (예: 10/10 실행·25일 납부 → 11/25). 31일 지정 시 말일로 자동 조정.</p>' +
       '<div class="dact">' + (id ? '<button type="button" class="b b-del" data-del>삭제</button>' : '') + '<button type="button" class="b b-line" data-close>취소</button><button class="b b-pri">저장</button></div></form>',
       function (fd) {
         var o = { id: L.id || uid(), name: fd.get('name').trim(), lender: fd.get('lender').trim(), principal: num(fd.get('principal')), rate: num(fd.get('rate')), term: Math.round(num(fd.get('term'))),
           grace: Math.round(num(fd.get('grace'))), type: fd.get('type'), calc: fd.get('calc') === 'daily' ? 'daily' : 'month', start: fd.get('start'), payDay: Math.min(31, Math.max(1, Math.round(num(fd.get('payDay'))))), prepays: L.prepays || [], actuals: L.actuals || [], rates: L.rates || [] };
-        if (!o.name || o.principal <= 0 || o.term < 1) return false;
+        if (!o.name || o.principal <= 0 || o.term < 1) { alert('대출명·원금·기간을 확인'); return false; }
+        if (!isDate(o.start)) { alert('대출 실행일을 확인'); return false; }
+        if (o.type !== 'bullet' && o.grace >= o.term) { alert('거치 기간은 대출 기간보다 짧아야 함 (현재 거치 ' + o.grace + '개월 / 기간 ' + o.term + '개월)'); return false; }
+        o.principal = Math.round(o.principal); o.grace = Math.max(0, o.grace); o.term = Math.min(600, o.term);
         if (id) state.loans = state.loans.map(function (x) { return x.id === id ? o : x; }); else state.loans.push(o);
-        save(); render();
+        save(); render(); toast(id ? '대출 수정됨' : '대출 추가됨');
       });
     var d = dlg.querySelector('[data-del]');
-    if (d) d.addEventListener('click', function () { if (confirm('이 대출을 삭제할까요?')) { state.loans = state.loans.filter(function (x) { return x.id !== id; }); save(); render(); dlg.close(); } });
+    if (d) d.addEventListener('click', function () { if (confirm('이 대출과 납부·금리·중도상환 기록을 모두 삭제할까요?')) { state.loans = state.loans.filter(function (x) { return x.id !== id; }); save(); render(); dlg.close(); toast('대출 삭제됨'); } });
   }
   function expForm(id) {
     var E = state.exps.filter(function (x) { return x.id === id; })[0] || { name: '', amount: '', cycle: 'month', month: 1 };
     openForm('<form><h3>' + (id ? '고정지출 수정' : '고정지출 추가') + '</h3>' + field('항목', 'name', E.name, 'required placeholder="예: 화재보험"') +
-      '<div class="g2">' + field('금액(원)', 'amount', E.amount, 'type="number" min="0" required inputmode="numeric"') +
+      '<div class="g2">' + field('금액(원)', 'amount', E.amount, 'type="number" min="0" required data-krw inputmode="numeric"') +
       '<label class="f">주기<select name="cycle"><option value="month"' + (E.cycle === 'month' ? ' selected' : '') + '>매월</option><option value="year"' + (E.cycle === 'year' ? ' selected' : '') + '>연 1회</option></select></label></div>' +
       field('연 1회인 경우 납부 월(1~12)', 'month', E.month, 'type="number" min="1" max="12"') +
       '<div class="dact">' + (id ? '<button type="button" class="b b-del" data-del>삭제</button>' : '') + '<button type="button" class="b b-line" data-close>취소</button><button class="b b-pri">저장</button></div></form>',
       function (fd) {
         var o = { id: E.id || uid(), name: fd.get('name').trim(), amount: num(fd.get('amount')), cycle: fd.get('cycle'), month: Math.min(12, Math.max(1, Math.round(num(fd.get('month'))) || 1)) };
         if (!o.name) return false;
+        o.amount = Math.max(0, Math.round(o.amount));
         if (id) state.exps = state.exps.map(function (x) { return x.id === id ? o : x; }); else state.exps.push(o);
         save(); render();
       });
     var d = dlg.querySelector('[data-del]');
-    if (d) d.addEventListener('click', function () { state.exps = state.exps.filter(function (x) { return x.id !== id; }); save(); render(); dlg.close(); });
+    if (d) d.addEventListener('click', function () { if (confirm('이 고정지출을 삭제할까요?')) { state.exps = state.exps.filter(function (x) { return x.id !== id; }); save(); render(); dlg.close(); toast('삭제됨'); } });
   }
 
   /* ---------- 시뮬레이터 ---------- */
@@ -248,10 +275,16 @@
     var L = state.loans.filter(function (x) { return x.id === card.dataset.id; })[0], v = function (n) { return card.querySelector('[data-s=' + n + ']').value; };
     var a = num(v('amt')), date = v('date'), mode = v('mode'), fee = num(v('fee')), out = card.querySelector('.out');
     out.hidden = false;
-    if (a <= 0 || !date) { out.textContent = '상환 금액과 상환일을 입력'; return; }
-    var base = schedule(L, L.prepays), np = (L.prepays || []).concat([{ date: date, amount: a, mode: mode }]), alt = schedule(L, np);
+    if (a <= 0 || !isDate(date)) { out.textContent = '상환 금액과 상환일을 입력'; return; }
+    if (date < L.start) { out.textContent = '상환일이 대출 실행일(' + L.start + ')보다 빠름'; return; }
+    fee = Math.max(0, fee);
+    var base = schedule(L, L.prepays), before = base.filter(function (r) { return r.date <= date; }), balAt = before.length ? before[before.length - 1].balance : L.principal, capped = false;
+    (base[before.length] ? base[before.length].pre : []).forEach(function (p) { if (p.date <= date) balAt -= p.amount; });
+    if (balAt <= 0 || date > base[base.length - 1].date) { out.textContent = '해당 날짜에는 이미 완납 상태'; return; }
+    if (a > balAt) { a = balAt; capped = true; }
+    var np = (L.prepays || []).concat([{ date: date, amount: a, mode: mode }]), alt = schedule(L, np);
     var saved = sum(base, 'interest') - sum(alt, 'interest'), feeAmt = Math.round(a * fee / 100), nextOld = base.filter(function (r) { return r.date > date; })[0], nextNew = alt.filter(function (r) { return r.date > date; })[0];
-    out.innerHTML = '이자 절감 <b>' + amt(saved) + '</b> − 수수료 ' + amt(feeAmt) + ' = 순이익 <b>' + amt(saved - feeAmt) + '</b><br>' +
+    out.innerHTML = (capped ? '<span class="hint">입력 금액이 잔액보다 커서 잔액 전액(' + amt(a) + ')으로 계산함</span><br>' : '') + '이자 절감 <b>' + amt(saved) + '</b> − 수수료 ' + amt(feeAmt) + ' = 순이익 <b>' + amt(saved - feeAmt) + '</b><br>' +
       '만기 ' + base[base.length - 1].date + ' → <b>' + (alt.length ? alt[alt.length - 1].date : date) + '</b> (' + (base.length - alt.length) + '개월 단축)' +
       (nextOld && nextNew ? '<br>다음 월 납부액 ' + amt(nextOld.interest + nextOld.principal) + ' → <b>' + amt(nextNew.interest + nextNew.principal) + '</b>' : '') +
       '<div class="row" style="margin-top:8px"><button class="b b-line b-sm" data-act="rec-pre" data-id="' + L.id + '">이 중도상환을 기록에 반영</button></div>';
@@ -260,14 +293,14 @@
 
   function refi(card) {
     var L = state.loans.filter(function (x) { return x.id === card.dataset.id; })[0], st = status(L), out = card.querySelector('[data-act=refi]').parentElement.querySelector('.out');
-    var v = function (n) { return num(card.querySelector('[data-r=' + n + ']').value); }, rate = v('rate'), fee = v('fee'), left = st.rows.length - st.paidCnt;
+    var v = function (n) { return num(card.querySelector('[data-r=' + n + ']').value); }, rate = Math.max(0, v('rate')), fee = Math.max(0, v('fee')), left = st.rows.length - st.paidCnt;
     out.hidden = false;
     if (st.bal <= 0 || left < 1) { out.textContent = '이미 완납'; return; }
     if (!card.querySelector('[data-r=rate]').value) { out.textContent = '새 금리를 입력'; return; }
-    var alt = schedule({ principal: st.bal, rate: rate, term: left, grace: 0, type: L.type, start: today(), payDay: L.payDay }, []);
+    var alt = schedule({ principal: st.bal, rate: rate, term: left, grace: 0, type: L.type, calc: L.calc, start: today(), payDay: L.payDay }, []);
     var ni = sum(alt, 'interest'), gain = st.remInt - ni - fee;
     out.innerHTML = '현재 조건 남은 이자 ' + amt(st.remInt) + ' → 새 금리 ' + amt(ni) + '<br>비용 ' + amt(fee) + ' 차감 후 <b>' + (gain >= 0 ? '절감 ' : '손해 ') + amt(Math.abs(gain)) + '</b>' +
-      '<br>잔액 ' + amt(st.bal) + ' · 남은 ' + left + '개월 기준 (같은 상환방식, 거치 없음 가정)';
+      '<br>잔액 ' + amt(st.bal) + ' · 남은 ' + left + '개월 기준 (같은 상환방식·고정금리, 거치 없음 가정)';
   }
 
   /* ---------- 이벤트 ---------- */
@@ -278,38 +311,63 @@
     else if (act === 'edit-exp') expForm(id);
     else if (act === 'add-rate') {
       var Lr = state.loans.filter(function (x) { return x.id === id; })[0], g = function (n) { return t.closest('.sim').querySelector('[data-c=' + n + ']').value; };
-      if (!g('date') || g('rate') === '') { alert('적용 시작일과 금리를 입력'); return; }
-      Lr.rates = (Lr.rates || []).filter(function (c) { return c.date !== g('date'); }).concat([{ date: g('date'), rate: num(g('rate')) }]); save(); render();
+      if (!isDate(g('date')) || g('rate') === '' || num(g('rate')) < 0 || num(g('rate')) > 100) { alert('적용 시작일과 금리(0~100%)를 입력'); return; }
+      if (g('date') < Lr.start) { alert('적용 시작일이 대출 실행일(' + Lr.start + ')보다 빠름'); return; }
+      Lr.rates = (Lr.rates || []).filter(function (c) { return c.date !== g('date'); }).concat([{ date: g('date'), rate: num(g('rate')) }]); save(); render(); toast('금리 변경 이력 추가됨');
     } else if (act === 'del-rate') {
       e.preventDefault(); var Lq = state.loans.filter(function (x) { return x.id === id; })[0];
-      if (confirm('금리 변경 이력을 삭제할까요?')) { Lq.rates = Lq.rates.filter(function (c) { return !(c.date === t.dataset.d && c.rate === +t.dataset.m); }); save(); render(); }
+      if (confirm('금리 변경 이력을 삭제할까요?')) { Lq.rates = Lq.rates.filter(function (c) { return !(c.date === t.dataset.d && c.rate === +t.dataset.m); }); save(); render(); toast('삭제됨'); }
     } else if (act === 'add-act') {
       var Lx = state.loans.filter(function (x) { return x.id === id; })[0], q = function (n) { return t.closest('.sim').querySelector('[data-a=' + n + ']').value; };
-      var am = num(q('amount')); if (!q('date') || am <= 0) { alert('납부일과 납부 총액을 입력'); return; }
-      Lx.actuals = (Lx.actuals || []).concat([{ date: q('date'), amount: am, interest: q('interest') === '' ? null : num(q('interest')) }]); save(); render();
+      var am = num(q('amount')); if (!isDate(q('date')) || am <= 0) { alert('납부일과 납부 총액을 입력'); return; }
+      if (q('interest') !== '' && (num(q('interest')) < 0 || num(q('interest')) > am)) { alert('이자는 0원 이상, 납부 총액 이하여야 함'); return; }
+      if (q('date') > today() && !confirm('납부일이 오늘 이후임. 그대로 기록할까요?')) return;
+      Lx.actuals = (Lx.actuals || []).concat([{ date: q('date'), amount: am, interest: q('interest') === '' ? null : num(q('interest')) }]); save(); render(); toast('납부 기록 추가됨');
     } else if (act === 'del-act') {
       e.preventDefault(); var Ly = state.loans.filter(function (x) { return x.id === id; })[0];
-      if (confirm('납부 기록을 삭제할까요?')) { var i = Ly.actuals.findIndex(function (a) { return a.date === t.dataset.d && a.amount === +t.dataset.m; }); if (i >= 0) Ly.actuals.splice(i, 1); save(); render(); }
+      if (confirm('납부 기록을 삭제할까요?')) { var i = Ly.actuals.findIndex(function (a) { return a.date === t.dataset.d && a.amount === +t.dataset.m; }); if (i >= 0) Ly.actuals.splice(i, 1); save(); render(); toast('삭제됨'); }
     } else if (act === 'refi') refi(t.closest('.loan'));
     else if (act === 'sim') simulate(t.closest('.loan'));
     else if (act === 'rec-pre') {
       var L = state.loans.filter(function (x) { return x.id === id; })[0], p = JSON.parse(t.closest('.out').dataset.pre);
-      L.prepays = (L.prepays || []).concat([p]); save(); render();
+      L.prepays = (L.prepays || []).concat([p]); save(); render(); toast('중도상환 기록됨 — 잔액·스케줄에 반영');
     } else if (act === 'del-pre') {
       e.preventDefault(); var L2 = state.loans.filter(function (x) { return x.id === id; })[0];
-      if (confirm('중도상환 기록을 삭제할까요?')) { L2.prepays.splice(+t.dataset.i, 1); save(); render(); }
+      if (confirm('중도상환 기록을 삭제할까요?')) { L2.prepays.splice(+t.dataset.i, 1); save(); render(); toast('삭제됨'); }
     }
   });
   $('#btn-add-loan').addEventListener('click', function () { loanForm(); });
   $('#btn-add-exp').addEventListener('click', function () { expForm(); });
-  $('#btn-mask').addEventListener('click', function () { mask = !mask; this.textContent = mask ? '👁 금액 표시' : '👁 금액 숨김'; render(); });
-  $('#btn-export').addEventListener('click', function () {
-    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' }));
-    a.download = 'finance-backup-' + today() + '.json'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  function maskLabel() { var b = $('#btn-mask'); b.textContent = mask ? '금액 표시' : '금액 숨김'; b.setAttribute('aria-pressed', mask ? 'true' : 'false'); }
+  $('#btn-mask').addEventListener('click', function () { mask = !mask; try { localStorage.setItem(MKEY, mask ? '1' : '0'); } catch (e) {} maskLabel(); render(); });
+  /* 금액 입력 시 한글 단위 표시, Enter로 계산 실행 */
+  document.addEventListener('input', function (e) {
+    var t = e.target; if (!t.matches || !t.matches('[data-krw]')) return;
+    var h = t.parentElement.querySelector('.krw'); if (h) h.textContent = krw(num(t.value));
   });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target.closest) return;
+    var sim = e.target.closest('.sim'); if (!sim || e.target.tagName === 'BUTTON') return;
+    var b = sim.querySelector('button.b-pri'); if (b) { e.preventDefault(); b.click(); }
+  });
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { state = load(); render(); } });
+  $('#btn-export').addEventListener('click', function () {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'smg-finance', v: 1, exportedAt: new Date().toISOString(), loans: state.loans, exps: state.exps }, null, 1)], { type: 'application/json' }));
+    a.download = 'finance-backup-' + today() + '.json'; a.click();
+    try { localStorage.setItem(BKEY, today()); } catch (e) {} backupInfo(); toast('백업 파일 내려받음'); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  function backupInfo() {
+    var el = $('#backup-info'), last = null; if (!el) return;
+    try { last = localStorage.getItem(BKEY); } catch (e) {}
+    var has = state.loans.length || state.exps.length;
+    if (!has) { el.hidden = true; return; }
+    var d = last && isDate(last) ? daysBetween(last, today()) : null;
+    el.hidden = false; el.className = 'hint' + (d === null || d > 30 ? ' warn' : '');
+    el.textContent = d === null ? '⚠ 아직 백업한 적 없음 — 브라우저 데이터가 지워지면 복구 불가. “백업 내려받기” 권장.' : '마지막 백업: ' + last + ' (' + (d === 0 ? '오늘' : d + '일 전') + ')' + (d > 30 ? ' — 30일 넘음, 백업 권장' : '');
+  }
   $('#btn-csv').addEventListener('click', function () {
     if (!state.loans.length) { alert('내보낼 대출이 없음'); return; }
-    var q = function (v) { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var q = function (v) { v = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(v) && isNaN(+v)) v = "'" + v; return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     var out = [['대출명', '금융기관', '구분', '회차', '날짜', '납부액', '원금', '이자', '중도상환', '잔액'].join(',')];
     state.loans.forEach(function (L) {
       schedule(L, L.prepays).forEach(function (r) {
@@ -320,7 +378,7 @@
       });
     });
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
-    a.download = 'finance-' + today() + '.csv'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    a.download = 'finance-' + today() + '.csv'; a.click(); toast('CSV 파일 내려받음'); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
   $('#file-import').addEventListener('change', function () {
     var f = this.files[0], inp = this; if (!f) return;
@@ -328,30 +386,39 @@
     r.onload = function () {
       try {
         var d = JSON.parse(r.result); if (!d || !Array.isArray(d.loans)) throw 0;
-        if (!confirm('현재 데이터를 백업 파일 내용으로 교체할까요?')) return;
-        state = { loans: d.loans.map(clean), exps: (d.exps || []).map(function (x) { return { id: String(x.id || uid()), name: String(x.name || ''), amount: num(x.amount), cycle: x.cycle === 'year' ? 'year' : 'month', month: Math.min(12, Math.max(1, +x.month || 1)) }; }) };
-        save(); render();
-      } catch (e) { alert('올바른 백업 파일이 아님'); }
+        if (confirm('현재 데이터(대출 ' + state.loans.length + '건)를 백업 파일 내용(대출 ' + d.loans.length + '건)으로 교체할까요?')) {
+          state = { loans: d.loans.map(clean), exps: (Array.isArray(d.exps) ? d.exps : []).map(cleanExp) };
+          save(); render(); toast('백업 불러옴');
+        }
+      } catch (e) { alert('올바른 백업 파일이 아님 (이 앱에서 내려받은 JSON 파일만 가능)'); }
       inp.value = '';
     };
+    r.onerror = function () { alert('파일을 읽지 못함'); inp.value = ''; };
     r.readAsText(f);
   });
+  function cleanExp(x) {
+    x = x || {};
+    return { id: String(x.id || uid()).replace(/[^\w-]/g, '') || uid(), name: String(x.name || '').slice(0, 100), amount: Math.max(0, Math.round(num(x.amount))), cycle: x.cycle === 'year' ? 'year' : 'month', month: Math.min(12, Math.max(1, Math.round(num(x.month)) || 1)) };
+  }
   function clean(x) {
-    return { id: String(x.id || uid()), name: String(x.name || ''), lender: String(x.lender || ''), principal: Math.max(1, num(x.principal)), rate: Math.max(0, num(x.rate)), term: Math.min(600, Math.max(1, Math.round(num(x.term)))),
-      grace: Math.max(0, Math.round(num(x.grace))), type: TYPE[x.type] ? x.type : 'equal', calc: x.calc === 'daily' ? 'daily' : 'month', start: /^\d{4}-\d{2}-\d{2}$/.test(x.start) ? x.start : today(), payDay: Math.min(31, Math.max(1, Math.round(num(x.payDay)) || 1)),
-      prepays: (x.prepays || []).map(function (p) { return { date: String(p.date), amount: num(p.amount), mode: p.mode === 'payment' ? 'payment' : 'term' }; }),
-      rates: (x.rates || []).map(function (c) { return { date: String(c.date), rate: Math.max(0, num(c.rate)) }; }),
-      actuals: (x.actuals || []).map(function (a) { return { date: String(a.date), amount: num(a.amount), interest: a.interest == null ? null : num(a.interest) }; }) };
+    x = x || {};
+    var arr = function (v) { return Array.isArray(v) ? v : []; }, ok = function (o) { return o && isDate(o.date); };
+    var term = Math.min(600, Math.max(1, Math.round(num(x.term)) || 1));
+    return { id: String(x.id || uid()).replace(/[^\w-]/g, '') || uid(), name: String(x.name || '').slice(0, 100), lender: String(x.lender || '').slice(0, 100), principal: Math.max(1, Math.round(num(x.principal))), rate: Math.min(100, Math.max(0, num(x.rate))), term: term,
+      grace: Math.min(term, Math.max(0, Math.round(num(x.grace)))), type: TYPE[x.type] ? x.type : 'equal', calc: x.calc === 'daily' ? 'daily' : 'month', start: isDate(x.start) ? x.start : today(), payDay: Math.min(31, Math.max(1, Math.round(num(x.payDay)) || 1)),
+      prepays: arr(x.prepays).filter(ok).map(function (p) { return { date: p.date, amount: Math.max(0, Math.round(num(p.amount))), mode: p.mode === 'payment' ? 'payment' : 'term' }; }),
+      rates: arr(x.rates).filter(ok).map(function (c) { return { date: c.date, rate: Math.min(100, Math.max(0, num(c.rate))) }; }),
+      actuals: arr(x.actuals).filter(ok).map(function (a) { return { date: a.date, amount: Math.max(0, Math.round(num(a.amount))), interest: a.interest == null ? null : Math.max(0, Math.round(num(a.interest))) }; }) };
   }
   $('#btn-sample').addEventListener('click', function () {
     if (state.loans.length && !confirm('예시 데이터를 추가할까요? (기존 데이터는 유지)')) return;
     var y = new Date().getFullYear() - 1;
     state.loans.push({ id: uid(), name: '예시 시설자금', lender: '예시은행', principal: 300000000, rate: 4.5, term: 120, grace: 12, type: 'equal', start: y + '-03-15', payDay: 25, prepays: [] });
     state.exps.push({ id: uid(), name: '예시 화재보험', amount: 1200000, cycle: 'year', month: 6 });
-    save(); render();
+    save(); render(); toast('예시 데이터 추가됨');
   });
-  $('#btn-reset').addEventListener('click', function () { if (confirm('저장된 모든 데이터를 삭제할까요? (되돌릴 수 없음)')) { state = { loans: [], exps: [] }; save(); render(); } });
+  $('#btn-reset').addEventListener('click', function () { if (confirm('저장된 모든 데이터를 삭제할까요? (되돌릴 수 없음)')) { state = { loans: [], exps: [] }; save(); render(); toast('전체 삭제됨'); } });
 
-  render();
+  state = load(); maskLabel(); render();
   window.__fin = { schedule: schedule, addMonths: addMonths };
 })();
