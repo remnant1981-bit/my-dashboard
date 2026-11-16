@@ -386,7 +386,20 @@ function overdueWatch() {
   p.setProperty('OVERDUE_SENT', JSON.stringify(items.map(overdueKey_))); // 지금 초과 중인 건만 보관 (회신되면 자동 정리)
 }
 // ── 1시간마다 실행: 기한 초과 확인 + 설정 탭 "아침 알림 시각"이 되면 하루 1번 아침 알림 ──
+// 정기 점검: 진행 단계·사내 담당이 있는데 상태가 "신규"로 남은 행 → "처리중" (여러 칸 붙여넣기·배포 전 입력 등 자동 처리가 빠진 경우 보정)
+function syncStatus_() {
+  const sh = sheet_(), c = cols_(sh), n = nextRow_(sh, c) - 2; if (n < 1 || !c[FIELDS.status] || !c[H.owner] || !c[H.stage]) return 0;
+  let k = 0;
+  sh.getRange(2, 1, n, sh.getLastColumn()).getValues().forEach((v, i) => {
+    if (v[c[FIELDS.status] - 1] === '신규' && String(v[c[H.owner] - 1]).trim() && String(v[c[H.stage] - 1]).trim() && v[c[FIELDS.source] - 1] !== 'download') {
+      const r = i + 2; sh.getRange(r, c[FIELDS.status]).setValue('처리중'); k++;
+      log_(SHEET, sh.getRange(r, c[FIELDS.status]).getA1Notation(), v[c[FIELDS.company] - 1], FIELDS.status, '신규', '처리중', '', '자동 (정기 점검: 진행 단계 입력됨)');
+    }
+  });
+  return k;
+}
 function hourlyJob() {
+  try { syncStatus_(); } catch (err) {}
   try { overdueWatch(); } catch (err) {}
   const now = new Date(), p = PropertiesService.getScriptProperties(), today = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const h = now.getHours(), rh = cfgNum_(CFG.remind, REMIND_HOUR, 0, 23);
