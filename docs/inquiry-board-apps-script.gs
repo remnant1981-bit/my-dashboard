@@ -14,7 +14,7 @@
  *  - 사내 담당에 이름을 넣으면 "접수 확인" 시각이 자동 기록됨 (= 담당자가 문의를 인지함)
  *  - 진행 단계(견적 검토·견적 발송·협의 중·수주·실주·보류)는 선택 입력. 바꿀 때마다 변경 로그에 이력이 남음
  *  - 새 문의: 담당 팀 알림 메일로 즉시 안내 / 평일 아침: 담당 미지정·오늘 기한·기한 초과 건을 팀별로 메일 (installTriggers 1회 실행)
- *  - 회신 기한이 지났는데 회신일이 비어 있으면: 관리자(NOTIFY_EMAIL)에게 즉시 1회 메일 (1시간마다 확인, 08~19시)
+ *  - 회신 기한이 지났는데 회신일이 비어 있으면: 담당 팀 + 관리자에게 즉시 1회 메일 (1시간마다 확인, 08~19시. 팀 알림은 설정 탭에서 끌 수 있음)
  *  - 월요일 아침: 연락처를 남겼는데 "미연락"인 자료 다운로드 목록을 관리자에게 메일
  *  - 같은 내용 10분 내 재접수는 1건만 기록, 1시간에 새 문의 알림이 상한(기본 15건)을 넘으면 팀 알림을 멈추고 관리자에게 1회 경고 (스팸 대비)
  *  - 권한 관리 탭: 시트 공유(편집자·뷰어) 현황을 1시간마다 자동 갱신, 부여·해제·변경은 변경 로그에 기록
@@ -36,7 +36,7 @@ const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일',
 const SET_SHEET = '설정';
 // 아래 값은 기본값. 설정 탭 "운영 설정 · 값" 표에 같은 항목이 있으면 그 값을 씀 (코드 수정 없이 시트에서 변경)
 const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
-const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)' };
+const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림' };
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -376,14 +376,22 @@ function dailyReminder() {
 function overdueKey_(x) { return (x.at instanceof Date ? x.at.getTime() : String(x.at)) + '|' + x.company; }
 function overdueWatch() {
   const h = new Date().getHours(); if (h < cfgNum_(CFG.from, WATCH_FROM, 0, 23) || h > cfgNum_(CFG.to, WATCH_TO, 0, 23)) return;
-  const to = notifyAdmin_(); if (!to) return;
+  const to = notifyAdmin_(), teamOn = !/^(아니오|아니요|no|off|미사용|x)$/i.test(String(cfg_()[CFG.overTeam] || '').trim());
   const p = PropertiesService.getScriptProperties();
   let sent = []; try { sent = JSON.parse(p.getProperty('OVERDUE_SENT') || '[]'); } catch (err) {}
   const items = remindItems_().filter((x) => x.kind === '⛔ 기한 초과');
   const fresh = items.filter((x) => sent.indexOf(overdueKey_(x)) < 0);
   if (fresh.length) {
-    const names = fresh.slice(0, 3).map((x) => x.company).join(', ') + (fresh.length > 3 ? ' 외 ' + (fresh.length - 3) + '건' : '');
-    const ok = mail_(to, '[⛔ 회신 기한 초과] ' + names, '회신 기한이 지났는데 "회신일"이 비어 있는 건입니다. 담당 팀·사내 담당 확인이 필요합니다.\n\n' + remindBody_(fresh));
+    const nm = (l) => l.slice(0, 3).map((x) => x.company).join(', ') + (l.length > 3 ? ' 외 ' + (l.length - 3) + '건' : '');
+    const head = '회신 기한이 지났는데 "회신일"이 비어 있는 건입니다. 고객 회신 후 "진행 단계"를 선택하거나 "회신일"을 입력해 주세요.\n\n';
+    let ok = false, tried = false;
+    if (teamOn) { // 담당 팀(공동 담당 포함)에도 팀별로
+      const mails = teamMails_(), teams = {};
+      fresh.forEach((x) => teamsOf_(x.team).forEach((t) => { (teams[t] = teams[t] || []).push(x); }));
+      Object.keys(teams).forEach((t) => { if (!mails[t]) return; tried = true; if (mail_(mails[t], '[⛔ 회신 기한 초과] ' + t + ' · ' + nm(teams[t]), head + remindBody_(teams[t]))) ok = true; });
+    }
+    if (to) { tried = true; if (mail_(to, '[⛔ 회신 기한 초과] ' + nm(fresh), head + remindBody_(fresh))) ok = true; }
+    if (!tried) return; // 받을 사람이 없으면 기록하지 않음 (설정 후 다시 알림)
     if (!ok) return; // 발송 실패 → 다음 확인 때 다시 시도
   }
   p.setProperty('OVERDUE_SENT', JSON.stringify(items.map(overdueKey_))); // 지금 초과 중인 건만 보관 (회신되면 자동 정리)
@@ -406,7 +414,9 @@ function syncStatus_() {
 function syncAccess_() {
   const ss = ss_(), own = String((ss.getOwner() && ss.getOwner().getEmail()) || '').toLowerCase(), cur = {};
   ss.getEditors().forEach((u) => { const e = String(u.getEmail() || '').toLowerCase(); if (e) cur[e] = e === own ? '소유자' : '편집자'; });
-  ss.getViewers().forEach((u) => { const e = String(u.getEmail() || '').toLowerCase(); if (e && !cur[e]) cur[e] = '뷰어'; });
+  // getViewers()는 구글 채팅방·그룹 공유가 있으면 서버 오류가 날 수 있음 → 실패 시 뷰어는 건드리지 않고 편집자만 갱신
+  let viewersOk = true;
+  try { ss.getViewers().forEach((u) => { const e = String(u.getEmail() || '').toLowerCase(); if (e && !cur[e]) cur[e] = '뷰어'; }); } catch (err) { viewersOk = false; }
   const sh = aclSheet_(), c = cols_(sh), now = new Date(), seen = {};
   let n = sh.getLastRow(); let k = 0;
   const vals = n > 1 ? sh.getRange(2, 1, n - 1, sh.getLastColumn()).getValues() : [];
@@ -414,6 +424,7 @@ function syncAccess_() {
   vals.forEach((v, i) => {
     const r = i + 2, e = String(v[c['구글 계정'] - 1] || '').trim().toLowerCase(); if (!e) return; seen[e] = 1;
     const st = v[c['상태'] - 1], role = v[c['권한'] - 1];
+    if (!cur[e] && !viewersOk) return; // 뷰어 목록을 못 읽은 경우: 편집자→뷰어 변경일 수 있으므로 해제 판정 안 함
     if (cur[e]) {
       if (st !== '사용 중') { writeRow_(sh, c, r, { '상태': '사용 중', '권한': cur[e], '부여 확인일': now, '해제 확인일': '' }); lg(r, e, '권한 부여', st || '', cur[e]); }
       else if (role !== cur[e]) { writeRow_(sh, c, r, { '권한': cur[e] }); lg(r, e, '권한 변경', role, cur[e]); }
