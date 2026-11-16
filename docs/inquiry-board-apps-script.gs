@@ -17,6 +17,7 @@
  *  - 회신 기한이 지났는데 회신일이 비어 있으면: 관리자(NOTIFY_EMAIL)에게 즉시 1회 메일 (1시간마다 확인, 08~19시)
  *  - 월요일 아침: 연락처를 남겼는데 "미연락"인 자료 다운로드 목록을 관리자에게 메일
  *  - 같은 내용 10분 내 재접수는 1건만 기록, 1시간에 새 문의 알림이 상한(기본 15건)을 넘으면 팀 알림을 멈추고 관리자에게 1회 경고 (스팸 대비)
+ *  - 권한 관리 탭: 시트 공유(편집자·뷰어) 현황을 1시간마다 자동 갱신, 부여·해제·변경은 변경 로그에 기록
  *  - 운영 값(관리자 메일·알림 시각·기한 초과 알림 시간대·알림 상한)·진행 단계·회신 기한 영업일·휴무일은 설정 탭에서 직접 변경 (코드 수정 불필요)
  * 모든 탭은 "머리글 이름"으로 열을 찾으므로 열 순서를 바꿔도 됨 (머리글 글자는 바꾸지 말 것)
  *
@@ -41,6 +42,7 @@ const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고�
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
 const FREE_MAIL = /@(gmail|naver|daum|hanmail|nate|kakao|hotmail|outlook|live|yahoo|icloud|me|korea|empas|paran|chol|dreamwiz)\./i;
 const LOG_LABELS = ['일시', '시트', '셀', '회사명', '항목', '이전 값', '새 값', '수정자', '경로'];
+const ACL_SHEET = '권한 관리', ACL_LABELS = ['구글 계정', '이름', '소속', '권한', '상태', '부여 확인일', '해제 확인일', '메모'];
 
 function token_() { const p = PropertiesService.getScriptProperties().getProperty('TOKEN'); return p && p.length >= 12 ? p : ''; }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -67,6 +69,7 @@ function dlSheet_() { let sh = ss_().getSheetByName(DL_SHEET); if (!sh) { sh = s
 function clSheet_() { let sh = ss_().getSheetByName(CL_SHEET); if (!sh) { sh = ss_().insertSheet(CL_SHEET); header_(sh, CL_LABELS, '#067647'); } return sh; }
 // 머리글 이름으로 한 행 쓰기 (수식 열·없는 열은 건너뜀)
 function writeRow_(sh, c, r, obj) { Object.keys(obj).forEach((h) => { const col = c[h]; if (col && obj[h] !== undefined) sh.getRange(r, col).setValue(obj[h]); }); }
+function aclSheet_() { let sh = ss_().getSheetByName(ACL_SHEET); if (!sh) { sh = ss_().insertSheet(ACL_SHEET); header_(sh, ACL_LABELS, '#7a2e8e'); } return sh; }
 function logSheet_() { let sh = ss_().getSheetByName(LOG_SHEET); if (!sh) { sh = ss_().insertSheet(LOG_SHEET); header_(sh, LOG_LABELS, '#667085'); } return sh; }
 function log_(sheet, a1, company, item, before, after, who, via) {
   try { logSheet_().appendRow([new Date(), sheet, a1, clean_(company, 200), item, clean_(before, 500), clean_(after, 500), who || '', via]); } catch (err) {}
@@ -398,7 +401,31 @@ function syncStatus_() {
   });
   return k;
 }
+// ── 시트 접근 권한 현황·이력: 1시간마다 공유 목록을 읽어 "권한 관리" 탭 갱신, 바뀐 내용은 변경 로그에 기록 ──
+//  (부여·해제한 사람은 구글이 알려주지 않으므로 "메모" 칸에 직접 적음. 확인일 = 시스템이 감지한 시각, 최대 1시간 차이)
+function syncAccess_() {
+  const ss = ss_(), own = String((ss.getOwner() && ss.getOwner().getEmail()) || '').toLowerCase(), cur = {};
+  ss.getEditors().forEach((u) => { const e = String(u.getEmail() || '').toLowerCase(); if (e) cur[e] = e === own ? '소유자' : '편집자'; });
+  ss.getViewers().forEach((u) => { const e = String(u.getEmail() || '').toLowerCase(); if (e && !cur[e]) cur[e] = '뷰어'; });
+  const sh = aclSheet_(), c = cols_(sh), now = new Date(), seen = {};
+  let n = sh.getLastRow(); let k = 0;
+  const vals = n > 1 ? sh.getRange(2, 1, n - 1, sh.getLastColumn()).getValues() : [];
+  const lg = (r, email, item, before, after) => { k++; log_(ACL_SHEET, sh.getRange(r, c['구글 계정']).getA1Notation(), email, item, before, after, '', '자동 (권한 점검)'); };
+  vals.forEach((v, i) => {
+    const r = i + 2, e = String(v[c['구글 계정'] - 1] || '').trim().toLowerCase(); if (!e) return; seen[e] = 1;
+    const st = v[c['상태'] - 1], role = v[c['권한'] - 1];
+    if (cur[e]) {
+      if (st !== '사용 중') { writeRow_(sh, c, r, { '상태': '사용 중', '권한': cur[e], '부여 확인일': now, '해제 확인일': '' }); lg(r, e, '권한 부여', st || '', cur[e]); }
+      else if (role !== cur[e]) { writeRow_(sh, c, r, { '권한': cur[e] }); lg(r, e, '권한 변경', role, cur[e]); }
+    } else if (st === '사용 중') { writeRow_(sh, c, r, { '상태': '해제', '해제 확인일': now }); lg(r, e, '권한 해제', role, '해제'); }
+  });
+  Object.keys(cur).filter((e) => !seen[e]).forEach((e) => { n = nextRowBy_(sh, c, '구글 계정'); writeRow_(sh, c, n, { '구글 계정': e, '권한': cur[e], '상태': '사용 중', '부여 확인일': now }); lg(n, e, '권한 부여', '', cur[e]); });
+  return k;
+}
+/** 필요할 때 실행: 권한 현황 즉시 갱신 */
+function 권한점검() { return syncAccess_(); }
 function hourlyJob() {
+  try { syncAccess_(); } catch (err) {}
   try { syncStatus_(); } catch (err) {}
   try { overdueWatch(); } catch (err) {}
   const now = new Date(), p = PropertiesService.getScriptProperties(), today = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
