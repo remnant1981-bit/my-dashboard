@@ -424,7 +424,7 @@ function syncAccess_() {
   vals.forEach((v, i) => {
     const r = i + 2, e = String(v[c['구글 계정'] - 1] || '').trim().toLowerCase(); if (!e) return; seen[e] = 1;
     const st = v[c['상태'] - 1], role = v[c['권한'] - 1];
-    if (!cur[e] && !viewersOk && role === '뷰어') return; // 뷰어 목록을 못 읽은 경우: 기존 뷰어는 그대로 둠
+    if (!cur[e] && !viewersOk) return; // 뷰어 목록을 못 읽은 경우: 편집자→뷰어 변경일 수 있으므로 해제 판정 안 함
     if (cur[e]) {
       if (st !== '사용 중') { writeRow_(sh, c, r, { '상태': '사용 중', '권한': cur[e], '부여 확인일': now, '해제 확인일': '' }); lg(r, e, '권한 부여', st || '', cur[e]); }
       else if (role !== cur[e]) { writeRow_(sh, c, r, { '권한': cur[e] }); lg(r, e, '권한 변경', role, cur[e]); }
