@@ -16,7 +16,8 @@
  *  - 새 문의: 담당 팀 알림 메일로 즉시 안내 / 평일 아침: 담당 미지정·오늘 기한·기한 초과 건을 팀별로 메일 (installTriggers 1회 실행)
  *  - 회신 기한이 지났는데 회신일이 비어 있으면: 관리자(NOTIFY_EMAIL)에게 즉시 1회 메일 (1시간마다 확인, 08~19시)
  *  - 월요일 아침: 연락처를 남겼는데 "미연락"인 자료 다운로드 목록을 관리자에게 메일
- *  - 같은 내용 10분 내 재접수는 1건만 기록, 1시간에 새 문의 알림이 MAIL_CAP건을 넘으면 팀 알림을 멈추고 관리자에게 1회 경고 (스팸 대비)
+ *  - 같은 내용 10분 내 재접수는 1건만 기록, 1시간에 새 문의 알림이 상한(기본 15건)을 넘으면 팀 알림을 멈추고 관리자에게 1회 경고 (스팸 대비)
+ *  - 운영 값(관리자 메일·알림 시각·기한 초과 알림 시간대·알림 상한)·진행 단계·회신 기한 영업일·휴무일은 설정 탭에서 직접 변경 (코드 수정 불필요)
  * 모든 탭은 "머리글 이름"으로 열을 찾으므로 열 순서를 바꿔도 됨 (머리글 글자는 바꾸지 말 것)
  *
  * 조회 비밀키(TOKEN)는 "프로젝트 설정 → 스크립트 속성"의 TOKEN 에 저장 (저장소·대화에 적지 말 것)
@@ -29,11 +30,12 @@ const FIELDS = { time: '접수일시', status: '상태', source: '경로', type:
 const CAT = { temperature: '온도센서', thermowell: '써모웰', heater: '히터', pressure: '압력 트랜스미터', 'cable-bushing': '케이블 부싱', feedthrough: '피드스루' };
 function catName_(v) { return String(v || '').split(',').map((x) => CAT[x.trim()] || x.trim()).filter(Boolean).join(', '); }
 const KEYS = Object.keys(FIELDS), LABELS = KEYS.map((k) => FIELDS[k]);
-const REPLIED_STAGES = ['견적 발송', '협의 중', '수주', '실주']; // 고객에게 회신한 것으로 보는 진행 단계
+const REPLIED_STAGES = ['견적 발송', '협의 중', '수주', '실주']; // 기본값. 설정 탭 "진행 단계·회신으로 봄" 표가 있으면 그 표를 따름
 const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일', next: '다음 조치일', updated: '최종 업데이트', ack: '접수 확인', stage: '진행 단계', due: '회신 기한', team: '담당 팀' };
-const SET_SHEET = '설정', REMIND_HOUR = 9; // 평일 아침 알림 시각(시)
-const WATCH_FROM = 8, WATCH_TO = 19;          // 기한 초과 즉시 알림을 보내는 시간대(시)
-const DUP_SEC = 600, MAIL_CAP = 15;           // 같은 내용 재접수 무시 시간(초) / 1시간 새 문의 알림 상한
+const SET_SHEET = '설정';
+// 아래 값은 기본값. 설정 탭 "운영 설정 · 값" 표에 같은 항목이 있으면 그 값을 씀 (코드 수정 없이 시트에서 변경)
+const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
+const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)' };
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -74,7 +76,28 @@ function log_(sheet, a1, company, item, before, after, who, via) {
 // ── 알림 메일 ──
 // 담당 팀 칸에 여러 팀(쉼표·/·· 구분)을 적으면 공동 담당 → 팀 이름 목록
 function teamsOf_(s) { return String(s || '').split(/\s*[,/·]\s*/).map((x) => x.trim()).filter(Boolean); }
-function notifyAdmin_() { return NOTIFY_EMAIL || PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || ''; }
+// ── 설정 탭 운영 설정 (사람이 시트에서 바꾸는 값) ──
+function cfg_() { // 매번 시트에서 읽음 (바꾼 값이 바로 반영)
+  const m = {};
+  try {
+    const sh = ss_().getSheetByName(SET_SHEET);
+    if (sh && sh.getLastRow() > 1) { const c = cols_(sh), k = c['운영 설정'], v = c['값'];
+      if (k && v) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach((r) => { const key = String(r[k - 1]).trim(); if (key) m[key] = r[v - 1]; }); }
+  } catch (err) {}
+  return m;
+}
+function cfgNum_(key, def, lo, hi) { const raw = cfg_()[key], n = Number(raw); return String(raw === undefined ? '' : raw).trim() !== '' && isFinite(n) && n >= lo && n <= hi ? Math.floor(n) : def; }
+function repliedStages_() { // 설정 탭 "진행 단계" 표에서 "회신으로 봄" 체크된 단계
+  try {
+    const sh = ss_().getSheetByName(SET_SHEET), c = cols_(sh), s = c['진행 단계'], f = c['회신으로 봄'];
+    if (s && f && sh.getLastRow() > 1) { const l = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().filter((r) => String(r[s - 1]).trim() && r[f - 1] === true).map((r) => String(r[s - 1]).trim()); if (l.length) return l; }
+  } catch (err) {}
+  return REPLIED_STAGES;
+}
+function notifyAdmin_() {
+  const v = String(cfg_()[CFG.admin] || '').split(/[,;\s]+/).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).join(',');
+  return v || NOTIFY_EMAIL || PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || '';
+}
 function teamMails_() { // 설정 탭 "알림 팀"·"알림 사용"·"알림 메일 1~5" 표 → { 영업1팀: 'a@x.com,b@x.com' }
   const sh = ss_().getSheetByName(SET_SHEET), m = {}; if (!sh || sh.getLastRow() < 2) return m;
   const c = cols_(sh), t = c['알림 팀'], use = c['알림 사용'];
@@ -239,17 +262,18 @@ function onEdit(e) {
   }
   log_(name, e.range.getA1Notation(), o[FIELDS.company], multi ? '(여러 칸)' : head, multi ? '' : e.oldValue, multi ? '' : e.value, who, '시트 직접 수정');
   if (!multi && head === H.owner) stampAck_(sh, c, r, o);
-  if (!multi && e.value && (head === H.replied || (head === H.stage && REPLIED_STAGES.indexOf(e.value) >= 0))) autoReplied_(sh, c, r, o, who);
+  if (!multi && e.value && (head === H.replied || head === H.stage)) autoReplied_(sh, c, r, o, who, head === H.stage && repliedStages_().indexOf(e.value) >= 0);
   if (c[H.updated] && e.range.getColumn() !== c[H.updated]) sh.getRange(r, c[H.updated], e.range.getNumRows(), 1).setValue(new Date());
 }
 
-// 회신 처리 자동화: 진행 단계에서 견적 발송·협의 중·수주·실주를 고르거나 회신일을 넣으면
-//  → 회신일이 비어 있으면 오늘 날짜, 상태가 "신규"이고 사내 담당이 있으면 "처리중" (회신 기한 알림에서 빠짐)
-function autoReplied_(sh, c, r, o, who) {
+// 진행 자동화: 진행 단계를 고르거나 회신일을 넣으면 상태 "신규" → "처리중" (사내 담당이 있을 때)
+//  + 회신으로 보는 단계(설정 탭 "회신으로 봄" 체크: 견적 발송·협의 중·수주·실주)면 회신일이 비어 있을 때 오늘 날짜 → 회신 기한 알림에서 빠짐
+function autoReplied_(sh, c, r, o, who, fillReply) {
   const done = [];
-  if (c[H.replied] && !o[H.replied]) { const d = new Date(); d.setHours(0, 0, 0, 0); sh.getRange(r, c[H.replied]).setValue(d); log_(SHEET, sh.getRange(r, c[H.replied]).getA1Notation(), o[FIELDS.company], H.replied, '', fmtD_(d), who, '자동 (진행 단계: ' + o[H.stage] + ')'); done.push('회신일 오늘'); }
-  if (o[FIELDS.status] === '신규' && o[H.owner]) { sh.getRange(r, c[FIELDS.status]).setValue('처리중'); log_(SHEET, sh.getRange(r, c[FIELDS.status]).getA1Notation(), o[FIELDS.company], FIELDS.status, '신규', '처리중', who, '자동 (회신 처리)'); done.push('상태 처리중'); }
-  if (done.length) ss_().toast(done.join(' · ') + ' 으로 자동 변경했습니다. 회신일이 다르면 직접 고쳐 주세요.', '회신 처리', 6);
+  if (fillReply && c[H.replied] && !o[H.replied]) { const d = new Date(); d.setHours(0, 0, 0, 0); sh.getRange(r, c[H.replied]).setValue(d); log_(SHEET, sh.getRange(r, c[H.replied]).getA1Notation(), o[FIELDS.company], H.replied, '', fmtD_(d), who, '자동 (진행 단계: ' + o[H.stage] + ')'); done.push('회신일 오늘'); }
+  if (o[FIELDS.status] === '신규' && o[H.owner]) { sh.getRange(r, c[FIELDS.status]).setValue('처리중'); log_(SHEET, sh.getRange(r, c[FIELDS.status]).getA1Notation(), o[FIELDS.company], FIELDS.status, '신규', '처리중', who, '자동 (진행 단계·회신)'); done.push('상태 처리중'); }
+  if (done.length) ss_().toast(done.join(' · ') + ' 으로 자동 변경했습니다.' + (fillReply ? ' 회신일이 다르면 직접 고쳐 주세요.' : ''), '진행 처리', 6);
+  else if (!o[H.owner] && o[FIELDS.status] === '신규') ss_().toast('"사내 담당"을 입력하면 상태가 처리중으로 바뀝니다.', '진행 처리', 6);
 }
 
 /**
@@ -284,10 +308,10 @@ function isDup_(d) {
 }
 function overCap_() { // 1시간(마지막 알림 기준) 동안 새 문의 알림 수가 상한을 넘으면 true
   const cc = cache_(); if (!cc) return false;
-  const n = (Number(cc.get('mail_n')) || 0) + 1; cc.put('mail_n', String(n), 3600);
-  if (n === MAIL_CAP + 1) mail_(notifyAdmin_(), '[주의] 1시간 동안 새 문의 ' + MAIL_CAP + '건 초과 — 팀 알림 일시 중단',
+  const n = (Number(cc.get('mail_n')) || 0) + 1, cap = cfgNum_(CFG.cap, MAIL_CAP, 1, 1000); cc.put('mail_n', String(n), 3600);
+  if (n === cap + 1) mail_(notifyAdmin_(), '[주의] 1시간 동안 새 문의 ' + cap + '건 초과 — 팀 알림 일시 중단',
     '짧은 시간에 문의가 몰려 담당 팀 알림 메일을 잠시 멈췄습니다. 스팸일 수 있으니 시트 "문의" 탭을 확인해 주세요.\n접수 기록은 계속 저장되며, 1시간 동안 새 문의가 없으면 알림이 다시 나갑니다.\n' + ss_().getUrl());
-  return n > MAIL_CAP;
+  return n > cap;
 }
 
 // ── 새 문의 알림: 담당 팀(설정 탭 알림 메일) + 관리자(NOTIFY_EMAIL) ──
@@ -348,7 +372,7 @@ function dailyReminder() {
 // ── 기한 초과 즉시 알림: 회신 기한이 지난 미회신 건 → 관리자에게 건별 1회 ──
 function overdueKey_(x) { return (x.at instanceof Date ? x.at.getTime() : String(x.at)) + '|' + x.company; }
 function overdueWatch() {
-  const h = new Date().getHours(); if (h < WATCH_FROM || h > WATCH_TO) return;
+  const h = new Date().getHours(); if (h < cfgNum_(CFG.from, WATCH_FROM, 0, 23) || h > cfgNum_(CFG.to, WATCH_TO, 0, 23)) return;
   const to = notifyAdmin_(); if (!to) return;
   const p = PropertiesService.getScriptProperties();
   let sent = []; try { sent = JSON.parse(p.getProperty('OVERDUE_SENT') || '[]'); } catch (err) {}
@@ -361,9 +385,15 @@ function overdueWatch() {
   }
   p.setProperty('OVERDUE_SENT', JSON.stringify(items.map(overdueKey_))); // 지금 초과 중인 건만 보관 (회신되면 자동 정리)
 }
-/** 처음 한 번 실행: 평일 아침 알림 + 기한 초과 확인(1시간마다) 예약 (다시 실행해도 중복 생성 안 됨) */
+// ── 1시간마다 실행: 기한 초과 확인 + 설정 탭 "아침 알림 시각"이 되면 하루 1번 아침 알림 ──
+function hourlyJob() {
+  try { overdueWatch(); } catch (err) {}
+  const now = new Date(), p = PropertiesService.getScriptProperties(), today = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const h = now.getHours(), rh = cfgNum_(CFG.remind, REMIND_HOUR, 0, 23);
+  if (h >= rh && h <= rh + 2 && p.getProperty('LAST_DAILY') !== today) { p.setProperty('LAST_DAILY', today); dailyReminder(); }
+}
+/** 처음 한 번 실행(코드 교체 후 다시 1번): 1시간마다 hourlyJob 예약. 알림 시각은 설정 탭에서 바꿈 (다시 실행해도 중복 생성 안 됨) */
 function installTriggers() {
-  ScriptApp.getProjectTriggers().filter((t) => ['dailyReminder', 'overdueWatch'].indexOf(t.getHandlerFunction()) >= 0).forEach((t) => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('dailyReminder').timeBased().everyDays(1).atHour(REMIND_HOUR).create();
-  ScriptApp.newTrigger('overdueWatch').timeBased().everyHours(1).create();
+  ScriptApp.getProjectTriggers().filter((t) => ['dailyReminder', 'overdueWatch', 'hourlyJob'].indexOf(t.getHandlerFunction()) >= 0).forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('hourlyJob').timeBased().everyHours(1).create();
 }
