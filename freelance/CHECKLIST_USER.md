@@ -9,7 +9,8 @@
    python -m pytest -q tests
    ```
 5. **`listing_final_kmong.md`를 항목 순서대로 붙여 넣어** 상품 등록 (근거·대안은 `exposure/kmong_detail_page.md`, `listing_kmong.md`) — 이미지는 `demo/images/`(미리보기·가상 데이터·출처 표기 유지) (가격·문구는 본인 검토 후 수정, 하단 "내부용" 구간은 게시하지 않음)
-   - 패키지는 **안 A 확정**: STANDARD 칸 = 체험 4만 / DELUXE 15만 / PREMIUM 30만 (8만원은 견적). 붙여 넣을 문구는 `listing_final_kmong.md` (상품 2도 같은 규칙, 범위·작업일은 제안값이라 검토 필요)
+   - 패키지는 **안 A 확정**: STANDARD 칸 = 체험 4만 / DELUXE 15만 / PREMIUM 30만, 8만원 상품은 체험 + 추가 가격 옵션(+4만). 붙여 넣을 문구는 `listing_final_kmong.md` (상품 2도 같은 규칙, 범위·작업일은 제안값이라 검토 필요)
+   - 문구를 고칠 때는 같은 문서의 '크몽 등록 규정 점검' 표를 지킬 것 ("문의 시 견적"·"별도 협의"·'최대/최고' 등 금지, 외부 연락처 금지). 제출 후 **영업일 7일 이내 심사**를 거쳐야 판매 시작
    - 등록 후 크몽 [판매 관리 > 수익 관리 > 수익금 계산기]로 실제 수수료 확인 (문서의 21.67%는 공식 정책 기준 계산값)
    - **등록일부터 `tracking/log.csv`에 문의·수주·완료·리뷰를 한 줄씩 기록** (양식·규칙: `tracking/README.md`, 개인정보·의뢰 내용은 적지 않음)
    - 2~4주 뒤 `python simulation/calibrate.py tracking/log.csv --start <등록일>`로 실측 기반 예측 확인 (문의 20건·4주 전에는 방향만 참고)

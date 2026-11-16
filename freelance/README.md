@@ -4,7 +4,7 @@
 단가 근거: 크몽/숨고 집계 페이지 수치(크롤링 평균 약 30만, 매크로·자동화 평균 15~20만, 집계 시점 2026-11, 추정 포함).
 **수주·수익은 보장되지 않음.** 플랫폼 수수료·세금 후 실수령은 `listing_kmong.md` 하단 참고.
 크몽 판매 수수료는 공식 정책 기준 70만원 이하 건 실효 21.67% → 실수령 100만원에 총 판매액 약 132만원 필요.
-패키지(안 A 확정): 크몽 3칸 = 체험 4만(첫 거래용, 결과 파일만) / 15만 / 30만, 8만원은 견적 (`listing_final_kmong.md`). 체험은 수주가 약 +10~15% 이상 늘어야 이득 (`simulation/RESULTS.md`, 가정 기반).
+패키지(안 A 확정): 크몽 3칸 = 체험 4만(첫 거래용, 결과 파일만) / 15만 / 30만, 8만원은 체험 + 추가 가격 옵션 (`listing_final_kmong.md`, 크몽 등록 규정 점검 포함). 체험은 수주가 약 +10~15% 이상 늘어야 이득 (`simulation/RESULTS.md`, 가정 기반).
 
 ## 구성
 | 경로 | 내용 | 검증 근거 |
@@ -20,7 +20,7 @@
 | `tracking/` + `simulation/calibrate.py` | 등록 후 활동 기록 양식 → 실측 문의율·전환율·패키지 비중 추정과 재예측 (소표본은 기본 가정 쪽으로 축소) | `tests/test_calibrate.py` 16건 (채널별 수수료·숨고 견적비용 포함) |
 | `sample_output/` | 샘플 실행 결과 (01 실사이트 2페이지 20건, 02 취합) | 깨끗한 venv에서 직접 실행 |
 | `templates/` | 견적서·문진표·면책 문구, 납품 가이드, 법적 유의, 알림 구현 예시, **납품 키트(`deliver_kit/`: run.bat·고객용 설명서)** | 문서 (run.bat은 Windows 미검증) |
-| `listing_final_kmong.md` | **크몽 등록 최종본 (패키지 안 A 확정)**: 상품 1·2의 제목·패키지 3칸·본문·FAQ·이미지·태그를 등록 화면 순서대로 | 본인 검토 필요 (글자 수 제한·카테고리 미확인) |
+| `listing_final_kmong.md` | **크몽 등록 최종본 (패키지 안 A 확정)**: 상품 1·2의 제목·패키지 3칸·추가 옵션·본문·FAQ·이미지·태그 + 크몽 등록 규정 점검표 | `tests/test_listing_rules.py` 9건 (금지 문구·연락처·고정 가격 검사. 심사 통과 보장은 아님) / 글자 수 제한·상품 2 카테고리 미확인 |
 | `listing_final_soomgo.md` | **숨고 등록 최종본**: 프로필·서비스 설명·포트폴리오·FAQ·첫 견적 메시지 + 견적 비용별 발송 기준 (숨고는 거래 수수료 없이 견적 열람 시 비용, 공식 안내 확인) | 본인 검토 필요 (카테고리·필수 인증·견적 단가 미확인) |
 | `listing_kmong.md` / `listing_soomgo.md` | 상품·프로필 초안과 근거 | 본인 검토 필요 |
 | `contract_checklist.md` | 겸업 선행조건·계약·세무 | 문서 |
@@ -29,7 +29,7 @@
 ## 실행 / 검증
 ```bash
 pip install -r samples/requirements.txt -r requirements-dev.txt
-python -m pytest -q tests      # 현재 62건 (데모·도구·시뮬레이션·재보정 포함. 샘플 20건은 깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
+python -m pytest -q tests      # 현재 71건 (데모·도구·시뮬레이션·재보정 포함. 샘플 20건은 깨끗한 venv 설치 후 통과 확인). Chrome 없으면 Selenium 통합 2건은 skip
 ```
 
 ## 알려진 제약
