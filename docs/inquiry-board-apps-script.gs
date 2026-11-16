@@ -29,6 +29,7 @@ const FIELDS = { time: '접수일시', status: '상태', source: '경로', type:
 const CAT = { temperature: '온도센서', thermowell: '써모웰', heater: '히터', pressure: '압력 트랜스미터', 'cable-bushing': '케이블 부싱', feedthrough: '피드스루' };
 function catName_(v) { return String(v || '').split(',').map((x) => CAT[x.trim()] || x.trim()).filter(Boolean).join(', '); }
 const KEYS = Object.keys(FIELDS), LABELS = KEYS.map((k) => FIELDS[k]);
+const REPLIED_STAGES = ['견적 발송', '협의 중', '수주', '실주']; // 고객에게 회신한 것으로 보는 진행 단계
 const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일', next: '다음 조치일', updated: '최종 업데이트', ack: '접수 확인', stage: '진행 단계', due: '회신 기한', team: '담당 팀' };
 const SET_SHEET = '설정', REMIND_HOUR = 9; // 평일 아침 알림 시각(시)
 const WATCH_FROM = 8, WATCH_TO = 19;          // 기한 초과 즉시 알림을 보내는 시간대(시)
@@ -71,6 +72,8 @@ function log_(sheet, a1, company, item, before, after, who, via) {
 
 // 회사 식별 키: 공백·법인 표기 제거 후 소문자
 // ── 알림 메일 ──
+// 담당 팀 칸에 여러 팀(쉼표·/·· 구분)을 적으면 공동 담당 → 팀 이름 목록
+function teamsOf_(s) { return String(s || '').split(/\s*[,/·]\s*/).map((x) => x.trim()).filter(Boolean); }
 function notifyAdmin_() { return NOTIFY_EMAIL || PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || ''; }
 function teamMails_() { // 설정 탭 "알림 팀"·"알림 사용"·"알림 메일 1~5" 표 → { 영업1팀: 'a@x.com,b@x.com' }
   const sh = ss_().getSheetByName(SET_SHEET), m = {}; if (!sh || sh.getLastRow() < 2) return m;
@@ -236,7 +239,17 @@ function onEdit(e) {
   }
   log_(name, e.range.getA1Notation(), o[FIELDS.company], multi ? '(여러 칸)' : head, multi ? '' : e.oldValue, multi ? '' : e.value, who, '시트 직접 수정');
   if (!multi && head === H.owner) stampAck_(sh, c, r, o);
+  if (!multi && e.value && (head === H.replied || (head === H.stage && REPLIED_STAGES.indexOf(e.value) >= 0))) autoReplied_(sh, c, r, o, who);
   if (c[H.updated] && e.range.getColumn() !== c[H.updated]) sh.getRange(r, c[H.updated], e.range.getNumRows(), 1).setValue(new Date());
+}
+
+// 회신 처리 자동화: 진행 단계에서 견적 발송·협의 중·수주·실주를 고르거나 회신일을 넣으면
+//  → 회신일이 비어 있으면 오늘 날짜, 상태가 "신규"이고 사내 담당이 있으면 "처리중" (회신 기한 알림에서 빠짐)
+function autoReplied_(sh, c, r, o, who) {
+  const done = [];
+  if (c[H.replied] && !o[H.replied]) { const d = new Date(); d.setHours(0, 0, 0, 0); sh.getRange(r, c[H.replied]).setValue(d); log_(SHEET, sh.getRange(r, c[H.replied]).getA1Notation(), o[FIELDS.company], H.replied, '', fmtD_(d), who, '자동 (진행 단계: ' + o[H.stage] + ')'); done.push('회신일 오늘'); }
+  if (o[FIELDS.status] === '신규' && o[H.owner]) { sh.getRange(r, c[FIELDS.status]).setValue('처리중'); log_(SHEET, sh.getRange(r, c[FIELDS.status]).getA1Notation(), o[FIELDS.company], FIELDS.status, '신규', '처리중', who, '자동 (회신 처리)'); done.push('상태 처리중'); }
+  if (done.length) ss_().toast(done.join(' · ') + ' 으로 자동 변경했습니다. 회신일이 다르면 직접 고쳐 주세요.', '회신 처리', 6);
 }
 
 /**
@@ -282,7 +295,7 @@ function newInquiryMail_(sh, c, r) {
   if (overCap_()) return;
   SpreadsheetApp.flush(); // 담당 팀·회신 기한 수식 계산
   const o = rowObj_(sh, c, r), team = String(o[H.team] || ''), mails = teamMails_();
-  const to = [mails[team], notifyAdmin_()].filter(Boolean).join(',');
+  const to = teamsOf_(team).map((t) => mails[t]).concat(notifyAdmin_()).filter(Boolean).join(',');
   if (!to) return;
   const body = ['홈페이지 견적·기술 문의가 접수되었습니다.', '',
     '담당 팀: ' + (team || '(미지정 — 설정 탭 제품 분류 표 확인)'), '회신 기한: ' + fmtD_(o[H.due]),
@@ -328,7 +341,7 @@ function dailyReminder() {
   if (day === 1) { try { downloadFollowupMail_(); } catch (err) {} }
   const items = remindItems_(); if (!items.length) return;
   const mails = teamMails_(), teams = {};
-  items.forEach((x) => { (teams[x.team] = teams[x.team] || []).push(x); });
+  items.forEach((x) => teamsOf_(x.team).forEach((t) => { (teams[t] = teams[t] || []).push(x); })); // 공동 담당(예: 영업1팀, 부설연구소)은 각 팀에 모두
   Object.keys(teams).forEach((t) => { if (mails[t]) mail_(mails[t], '[회신 기한 알림] ' + t + ' ' + teams[t].length + '건', remindBody_(teams[t])); });
   mail_(notifyAdmin_(), '[회신 기한 알림] 전체 ' + items.length + '건', remindBody_(items));
 }
