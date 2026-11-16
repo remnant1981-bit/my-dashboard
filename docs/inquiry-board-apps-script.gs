@@ -36,7 +36,7 @@ const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일',
 const SET_SHEET = '설정';
 // 아래 값은 기본값. 설정 탭 "운영 설정 · 값" 표에 같은 항목이 있으면 그 값을 씀 (코드 수정 없이 시트에서 변경)
 const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
-const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림' };
+const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일' };
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -176,7 +176,7 @@ function doPost(e) {
   try { d = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return json_({ ok: false }); }
   if (d.website || d.botcheck) return json_({ ok: true }); // 스팸 봇 차단용 숨은 칸
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
-  let newRow = 0, inq = null;
+  let newRow = 0, inq = null, dlNote = null;
   try {
     const now = new Date();
     if (d.kind === 'download') { // 자료 다운로드 이력 (연락처 없이도 기록)
@@ -185,6 +185,7 @@ function doPost(e) {
       writeRow_(dl, c, r, { '일시': now, '회사명': clean_(d.company, 200), '담당자': clean_(d.name, 100), '연락처': clean_(d.phone, 50), '이메일': clean_(d.email, 200),
         '자료명': clean_(d.title, 200), '구분': who ? '연락처 남김' : '익명', '후속 상태': who ? '미연락' : '', '받은 페이지': clean_(d.page, 200), '언어': clean_(d.lang, 5), '유입 경로': clean_(d.ref, 300), '파일': clean_(d.file, 300) });
       newRow = upsertClient_(d, 'download', now);
+      if (who) dlNote = { d: d, r: r, sh: dl };
     } else {
       if (!d.company && !d.email && !d.message) return json_({ ok: false });
       if (d.source === 'download') return json_({ ok: true }); // 다운로드 신청은 위 "다운로드 이력"으로만 기록 (문의 탭은 견적·기술 문의 전용)
@@ -200,6 +201,7 @@ function doPost(e) {
     }
   } finally { lock.releaseLock(); }
   if (inq) { try { newInquiryMail_(inq.sh, inq.c, inq.r); } catch (err) {} } // 담당 팀·관리자 알림
+  if (dlNote) { try { downloadMail_(dlNote); } catch (err) {} } // 연락처 남긴 자료 다운로드 → 관리자 알림
   if (newRow) enrich_(newRow); // 새 업체: 홈페이지 정보 채우기 (잠금 해제 후)
   return json_({ ok: true });
 }
@@ -315,6 +317,16 @@ function overCap_() { // 1시간(마지막 알림 기준) 동안 새 문의 알�
   if (n === cap + 1) mail_(notifyAdmin_(), '[주의] 1시간 동안 새 문의 ' + cap + '건 초과 — 팀 알림 일시 중단',
     '짧은 시간에 문의가 몰려 담당 팀 알림 메일을 잠시 멈췄습니다. 스팸일 수 있으니 시트 "문의" 탭을 확인해 주세요.\n접수 기록은 계속 저장되며, 1시간 동안 새 문의가 없으면 알림이 다시 나갑니다.\n' + ss_().getUrl());
   return n > cap;
+}
+
+// ── 자료 다운로드(연락처 남김) 알림 → 관리자. 설정 탭 "다운로드 알림 메일" = 아니오 이면 끔 ──
+function downloadMail_(x) {
+  if (/^(아니오|아니요|no|off|미사용|x)$/i.test(String(cfg_()[CFG.dlMail] || '').trim())) return;
+  const to = notifyAdmin_(); if (!to) return;
+  const d = x.d, link = ss_().getUrl() + '#gid=' + x.sh.getSheetId() + '&range=A' + x.r;
+  mail_(to, '[자료 다운로드] ' + (d.company || '') + ' — ' + (d.title || d.file || ''),
+    ['홈페이지에서 연락처를 남기고 자료를 받았습니다.', '', '회사명: ' + (d.company || ''), '담당자: ' + (d.name || ''), '이메일: ' + (d.email || ''), '연락처: ' + (d.phone || ''),
+     '자료: ' + (d.title || d.file || ''), '받은 페이지: ' + (d.page || ''), '', '▶ 후속 연락 후 "다운로드 이력" 탭의 후속 상태를 바꿔 주세요', link].join('\n'));
 }
 
 // ── 새 문의 알림: 담당 팀(설정 탭 알림 메일) + 관리자(NOTIFY_EMAIL) ──
