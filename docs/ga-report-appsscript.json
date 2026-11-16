@@ -1,0 +1,18 @@
+{
+  "timeZone": "Asia/Seoul",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      { "userSymbol": "AnalyticsData", "version": "v1beta", "serviceId": "analyticsdata" }
+    ]
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets.currentonly",
+    "https://www.googleapis.com/auth/analytics.readonly",
+    "https://www.googleapis.com/auth/webmasters.readonly",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/script.send_mail"
+  ],
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8"
+}
