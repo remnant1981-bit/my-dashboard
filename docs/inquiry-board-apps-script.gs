@@ -29,6 +29,7 @@ const FIELDS = { time: '접수일시', status: '상태', source: '경로', type:
 const CAT = { temperature: '온도센서', thermowell: '써모웰', heater: '히터', pressure: '압력 트랜스미터', 'cable-bushing': '케이블 부싱', feedthrough: '피드스루' };
 function catName_(v) { return String(v || '').split(',').map((x) => CAT[x.trim()] || x.trim()).filter(Boolean).join(', '); }
 const KEYS = Object.keys(FIELDS), LABELS = KEYS.map((k) => FIELDS[k]);
+const REPLIED_STAGES = ['견적 발송', '협의 중', '수주', '실주']; // 고객에게 회신한 것으로 보는 진행 단계
 const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일', next: '다음 조치일', updated: '최종 업데이트', ack: '접수 확인', stage: '진행 단계', due: '회신 기한', team: '담당 팀' };
 const SET_SHEET = '설정', REMIND_HOUR = 9; // 평일 아침 알림 시각(시)
 const WATCH_FROM = 8, WATCH_TO = 19;          // 기한 초과 즉시 알림을 보내는 시간대(시)
@@ -238,7 +239,17 @@ function onEdit(e) {
   }
   log_(name, e.range.getA1Notation(), o[FIELDS.company], multi ? '(여러 칸)' : head, multi ? '' : e.oldValue, multi ? '' : e.value, who, '시트 직접 수정');
   if (!multi && head === H.owner) stampAck_(sh, c, r, o);
+  if (!multi && e.value && (head === H.replied || (head === H.stage && REPLIED_STAGES.indexOf(e.value) >= 0))) autoReplied_(sh, c, r, o, who);
   if (c[H.updated] && e.range.getColumn() !== c[H.updated]) sh.getRange(r, c[H.updated], e.range.getNumRows(), 1).setValue(new Date());
+}
+
+// 회신 처리 자동화: 진행 단계에서 견적 발송·협의 중·수주·실주를 고르거나 회신일을 넣으면
+//  → 회신일이 비어 있으면 오늘 날짜, 상태가 "신규"이고 사내 담당이 있으면 "처리중" (회신 기한 알림에서 빠짐)
+function autoReplied_(sh, c, r, o, who) {
+  const done = [];
+  if (c[H.replied] && !o[H.replied]) { const d = new Date(); d.setHours(0, 0, 0, 0); sh.getRange(r, c[H.replied]).setValue(d); log_(SHEET, sh.getRange(r, c[H.replied]).getA1Notation(), o[FIELDS.company], H.replied, '', fmtD_(d), who, '자동 (진행 단계: ' + o[H.stage] + ')'); done.push('회신일 오늘'); }
+  if (o[FIELDS.status] === '신규' && o[H.owner]) { sh.getRange(r, c[FIELDS.status]).setValue('처리중'); log_(SHEET, sh.getRange(r, c[FIELDS.status]).getA1Notation(), o[FIELDS.company], FIELDS.status, '신규', '처리중', who, '자동 (회신 처리)'); done.push('상태 처리중'); }
+  if (done.length) ss_().toast(done.join(' · ') + ' 으로 자동 변경했습니다. 회신일이 다르면 직접 고쳐 주세요.', '회신 처리', 6);
 }
 
 /**
