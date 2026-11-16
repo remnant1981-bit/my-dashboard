@@ -400,6 +400,8 @@
     $('#crumb').innerHTML = `<a href="${L('index.html')}">HOME</a>/<a href="${L('support.html')}">${t('고객지원', 'Support')}</a>/<a href="${L('support.html#news')}">${t('공지사항', 'News')}</a>`;
     const back = `<a class="btn btn-dark" href="${L('support.html#news')}">${t('목록으로', 'Back to list')}</a>`;
     if (!n) {
+      // 없는 공지(또는 id 없는 주소): 검색 색인 제외 (Search Console Soft 404 방지)
+      if (!document.querySelector('meta[name=robots]')) { const mr = document.createElement('meta'); mr.name = 'robots'; mr.content = 'noindex,follow'; document.head.appendChild(mr); }
       $('#nt-title').textContent = t('공지를 찾을 수 없습니다', 'Notice not found');
       $('#notice').innerHTML = `<p class="nt-empty">${t('삭제되었거나 주소가 올바르지 않습니다.', 'It may have been removed or the link is incorrect.')}</p><div class="nt-actions">${back}</div>`;
       return;
