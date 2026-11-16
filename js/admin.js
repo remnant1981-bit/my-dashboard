@@ -443,7 +443,8 @@
         { k: 'sheetEndpoint', label: '구글 Apps Script 웹앱 주소', full: true, ph: 'https://script.google.com/macros/s/XXXX/exec', hint: '비워두면 시트 저장 안 함 (메일 수신은 그대로)' }
       ], s);
       formCard(el, '자료 다운로드 연락처', '자료실·카탈로그 다운로드 시 회사·이메일을 받는 기능 (영업 리드)', [
-        { k: 'downloadGate', label: '사용 방식', type: 'select', opts: () => [['off', '끄기 (바로 다운로드)'], ['optional', '선택 (입력 또는 건너뛰기)'], ['required', '필수 (입력해야 다운로드)']], hint: '입력 내용은 문의 메일·시트로 "자료 다운로드" 유형으로 접수됨 (Web3Forms 건수에 포함)' }
+        { k: 'downloadGate', label: '사용 방식', type: 'select', opts: () => [['off', '끄기 (바로 다운로드)'], ['optional', '선택 (입력 또는 건너뛰기)'], ['required', '필수 (입력해야 다운로드)']], hint: '입력 내용은 문의 메일·시트로 "자료 다운로드" 유형으로 접수됨 (Web3Forms 건수에 포함)' },
+        { k: 'downloadWorkEmail', label: '회사 메일만 허용 (Gmail·네이버·다음 등 개인 메일 주소로는 다운로드 불가)', type: 'check', full: true }
       ], s);
       formCard(el, '회사·공장 소개 영상', '유튜브에 영상을 올린 뒤 주소를 입력 (비공개 말고 "일부 공개" 또는 "공개")', [
         { k: 'videoUrl', label: '유튜브 주소 (국문 페이지)', full: true, ph: 'https://www.youtube.com/watch?v=XXXXXXXXXXX' },
