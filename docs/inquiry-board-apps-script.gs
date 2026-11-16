@@ -31,6 +31,7 @@ const FIELDS = { time: '접수일시', status: '상태', source: '경로', type:
 const CAT = { temperature: '온도센서', thermowell: '써모웰', heater: '히터', pressure: '압력 트랜스미터', 'cable-bushing': '케이블 부싱', feedthrough: '피드스루' };
 function catName_(v) { return String(v || '').split(',').map((x) => CAT[x.trim()] || x.trim()).filter(Boolean).join(', '); }
 const KEYS = Object.keys(FIELDS), LABELS = KEYS.map((k) => FIELDS[k]);
+const NA_STAGE = /^해당 없음/; // 진행 단계 "해당 없음(영업 제안·스팸)" → 상태 완료, 알림·지표 제외
 const REPLIED_STAGES = ['견적 발송', '협의 중', '수주', '실주']; // 기본값. 설정 탭 "진행 단계·회신으로 봄" 표가 있으면 그 표를 따름
 const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일', next: '다음 조치일', updated: '최종 업데이트', ack: '접수 확인', stage: '진행 단계', due: '회신 기한', team: '담당 팀' };
 const SET_SHEET = '설정';
@@ -267,12 +268,19 @@ function onEdit(e) {
   }
   log_(name, e.range.getA1Notation(), o[FIELDS.company], multi ? '(여러 칸)' : head, multi ? '' : e.oldValue, multi ? '' : e.value, who, '시트 직접 수정');
   if (!multi && head === H.owner) stampAck_(sh, c, r, o);
+  if (!multi && e.value && head === H.stage && NA_STAGE.test(e.value)) { closeNA_(sh, c, r, o, who); return; }
   if (!multi && e.value && (head === H.replied || head === H.stage)) autoReplied_(sh, c, r, o, who, head === H.stage && repliedStages_().indexOf(e.value) >= 0);
   if (c[H.updated] && e.range.getColumn() !== c[H.updated]) sh.getRange(r, c[H.updated], e.range.getNumRows(), 1).setValue(new Date());
 }
 
 // 진행 자동화: 진행 단계를 고르거나 회신일을 넣으면 상태 "신규" → "처리중" (사내 담당이 있을 때)
 //  + 회신으로 보는 단계(설정 탭 "회신으로 봄" 체크: 견적 발송·협의 중·수주·실주)면 회신일이 비어 있을 때 오늘 날짜 → 회신 기한 알림에서 빠짐
+// "해당 없음(영업 제안·스팸)": 고객 회신 대상 아님 → 상태 완료(규칙 예외), 처리 메모 자동, 회신 기한 알림·지표에서 제외
+function closeNA_(sh, c, r, o, who) {
+  if (c[H.memo] && !o[H.memo]) sh.getRange(r, c[H.memo]).setValue('해당 없음 처리 (영업 제안·스팸 등)');
+  if (o[FIELDS.status] !== '완료') { sh.getRange(r, c[FIELDS.status]).setValue('완료'); log_(SHEET, sh.getRange(r, c[FIELDS.status]).getA1Notation(), o[FIELDS.company], FIELDS.status, o[FIELDS.status], '완료', who, '자동 (해당 없음)'); }
+  ss_().toast('해당 없음으로 처리했습니다 (상태 완료, 알림·지표 제외).', '진행 처리', 6);
+}
 function autoReplied_(sh, c, r, o, who, fillReply) {
   const done = [];
   if (fillReply && c[H.replied] && !o[H.replied]) { const d = new Date(); d.setHours(0, 0, 0, 0); sh.getRange(r, c[H.replied]).setValue(d); log_(SHEET, sh.getRange(r, c[H.replied]).getA1Notation(), o[FIELDS.company], H.replied, '', fmtD_(d), who, '자동 (진행 단계: ' + o[H.stage] + ')'); done.push('회신일 오늘'); }
@@ -350,7 +358,7 @@ function remindItems_() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return sh.getRange(2, 1, n, sh.getLastColumn()).getValues().map((v, i) => {
     const g = (h) => (c[h] ? v[c[h] - 1] : '');
-    if (!g(FIELDS.time) || g(FIELDS.source) === 'download' || g(FIELDS.status) === '완료' || g(H.replied)) return null;
+    if (!g(FIELDS.time) || g(FIELDS.source) === 'download' || g(FIELDS.status) === '완료' || g(H.replied) || NA_STAGE.test(String(g(H.stage)))) return null;
     const due = g(H.due), d = due instanceof Date ? new Date(due.getFullYear(), due.getMonth(), due.getDate()) : null;
     const kind = d && d < today ? '⛔ 기한 초과' : d && +d === +today ? '⚠ 오늘 기한' : !g(H.owner) ? '담당 미지정' : '';
     if (!kind) return null;
