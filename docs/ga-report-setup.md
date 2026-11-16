@@ -20,9 +20,15 @@
 | `REPORT_TO` | 월간 요약 받을 메일 (예: 관리자 메일) | 비우면 메일 안 보냄 |
 | `NAVER_ID` | 네이버 검색 API Client ID | 담당자가 직접 입력 (저장소·대화에 적지 말 것) |
 | `NAVER_SECRET` | 네이버 검색 API Client Secret | 〃 |
+| `NAVER_MODE` | `hub` (NAVER API HUB 키일 때만) | 선택 |
+| `NAVER_URL` | HUB 주소가 다를 때만 (`{q}` 포함) | 선택 |
 
-**네이버 검색 API 키 받기 (무료, 5분)**: developers.naver.com → Application → 애플리케이션 등록 → 사용 API **검색** 선택 → 환경 "WEB 설정", URL `https://www.sungsil.com` → 등록 후 Client ID·Secret 확인. 하루 25,000회 무료 (월 1회 20여 건 사용).
-키가 없으면 네이버 순위만 건너뛰고 나머지는 정상 기록됨.
+**네이버 검색 API 키 (선택)**: 키가 없으면 네이버 순위만 건너뛰고 나머지는 정상 기록됨.
+- 2026-07-31 이후 개발자센터(developers.naver.com) 검색 API 신규 신청이 막히고 **NAVER API HUB(네이버클라우드 플랫폼)** 로 이관됨 [제3자 자료 기준, 공식 공지 미확인]
+- HUB 키 사용 시: 네이버클라우드 콘솔 → API HUB → Application 생성 → 웹문서 검색 선택 → 발급 키를 `NAVER_ID`(API Key ID)·`NAVER_SECRET`(API Key)에 넣고 **`NAVER_MODE` = `hub`** 추가
+- HUB 주소가 코드 기본값과 다르면 `NAVER_URL` 에 `{q}`(검색어 자리) 포함 전체 주소를 넣으면 코드 수정 없이 동작
+- 네이버클라우드 가입에 결제수단 등록이 필요할 수 있음 (현재 검색 API 무료, 유료화 시 중단 검토)
+- 기존 개발자센터 키가 있으면 `NAVER_MODE` 없이 그대로 사용
 
 ## 3. 처음 실행
 1. 함수 `installTrigger` 선택 → 실행 → 권한 허용 (Analytics·Search Console 읽기, 메일 발송, 예약 실행)
