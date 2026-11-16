@@ -121,6 +121,12 @@ function measureRanks_(ss) {
   const list = ks.getRange(2, 1, ks.getLastRow() - 1, 3).getValues().filter((r) => String(r[1]).trim() && r[2] !== false);
   const out = sheet_(ss, '키워드_순위', KW_HEAD), today = ymd_(new Date()), p = PropertiesService.getScriptProperties();
   const nid = p.getProperty('NAVER_ID'), nsec = p.getProperty('NAVER_SECRET'), rows = [];
+  // 네이버 검색 API: 기존 개발자센터 키(기본) 또는 NAVER API HUB(네이버클라우드) 키. 스크립트 속성 NAVER_MODE = hub 이면 HUB 방식
+  // HUB 주소·헤더는 2026-11 공개 자료 기준 [추정] → 다르면 스크립트 속성 NAVER_URL 에 {q} 자리표시 포함 주소를 넣어 덮어씀
+  const hub = /^hub$/i.test(String(p.getProperty('NAVER_MODE') || '').trim());
+  const naverUrl = p.getProperty('NAVER_URL') || (hub ? 'https://naverapihub.apigw.ntruss.com/search/v1/webkr?format=json&display=100&start=1&query={q}'
+    : 'https://openapi.naver.com/v1/search/webkr.json?display=100&start=1&query={q}');
+  const naverHead = hub ? { 'X-NCP-APIGW-API-KEY-ID': nid, 'X-NCP-APIGW-API-KEY': nsec } : { 'X-Naver-Client-Id': nid, 'X-Naver-Client-Secret': nsec };
   list.forEach((r) => {
     const g = r[0], k = String(r[1]).trim();
     // 구글: 서치콘솔 최근 28일, 검색어가 정확히 같은 경우의 평균 순위
@@ -132,8 +138,7 @@ function measureRanks_(ss) {
     // 네이버: 검색 API 웹문서 100건
     if (!nid || !nsec) return;
     try {
-      const res = UrlFetchApp.fetch('https://openapi.naver.com/v1/search/webkr.json?display=100&start=1&query=' + encodeURIComponent(k),
-        { headers: { 'X-Naver-Client-Id': nid, 'X-Naver-Client-Secret': nsec }, muteHttpExceptions: true });
+      const res = UrlFetchApp.fetch(naverUrl.replace('{q}', encodeURIComponent(k)), { headers: naverHead, muteHttpExceptions: true });
       if (res.getResponseCode() !== 200) throw new Error('네이버 API ' + res.getResponseCode());
       const items = JSON.parse(res.getContentText()).items || [], i = items.findIndex((it) => /sungsil\.com/i.test(it.link || ''));
       rows.push([today, '네이버(검색 API 웹문서)', g, k, i >= 0 ? i + 1 : '', i >= 0 ? String(items[i].link).replace(/^https?:\/\/(www\.)?sungsil\.com/i, '') || '/' : '', i >= 0 ? '' : '100위 밖']);
