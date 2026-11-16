@@ -71,6 +71,8 @@ function log_(sheet, a1, company, item, before, after, who, via) {
 
 // 회사 식별 키: 공백·법인 표기 제거 후 소문자
 // ── 알림 메일 ──
+// 담당 팀 칸에 여러 팀(쉼표·/·· 구분)을 적으면 공동 담당 → 팀 이름 목록
+function teamsOf_(s) { return String(s || '').split(/\s*[,/·]\s*/).map((x) => x.trim()).filter(Boolean); }
 function notifyAdmin_() { return NOTIFY_EMAIL || PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAIL') || ''; }
 function teamMails_() { // 설정 탭 "알림 팀"·"알림 사용"·"알림 메일 1~5" 표 → { 영업1팀: 'a@x.com,b@x.com' }
   const sh = ss_().getSheetByName(SET_SHEET), m = {}; if (!sh || sh.getLastRow() < 2) return m;
@@ -282,7 +284,7 @@ function newInquiryMail_(sh, c, r) {
   if (overCap_()) return;
   SpreadsheetApp.flush(); // 담당 팀·회신 기한 수식 계산
   const o = rowObj_(sh, c, r), team = String(o[H.team] || ''), mails = teamMails_();
-  const to = [mails[team], notifyAdmin_()].filter(Boolean).join(',');
+  const to = teamsOf_(team).map((t) => mails[t]).concat(notifyAdmin_()).filter(Boolean).join(',');
   if (!to) return;
   const body = ['홈페이지 견적·기술 문의가 접수되었습니다.', '',
     '담당 팀: ' + (team || '(미지정 — 설정 탭 제품 분류 표 확인)'), '회신 기한: ' + fmtD_(o[H.due]),
@@ -328,7 +330,7 @@ function dailyReminder() {
   if (day === 1) { try { downloadFollowupMail_(); } catch (err) {} }
   const items = remindItems_(); if (!items.length) return;
   const mails = teamMails_(), teams = {};
-  items.forEach((x) => { (teams[x.team] = teams[x.team] || []).push(x); });
+  items.forEach((x) => teamsOf_(x.team).forEach((t) => { (teams[t] = teams[t] || []).push(x); })); // 공동 담당(예: 영업1팀, 부설연구소)은 각 팀에 모두
   Object.keys(teams).forEach((t) => { if (mails[t]) mail_(mails[t], '[회신 기한 알림] ' + t + ' ' + teams[t].length + '건', remindBody_(teams[t])); });
   mail_(notifyAdmin_(), '[회신 기한 알림] 전체 ' + items.length + '건', remindBody_(items));
 }
