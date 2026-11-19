@@ -190,7 +190,7 @@ function doPost(e) {
       const dl = dlSheet_(), c = cols_(dl), r = nextRowBy_(dl, c, '일시'), who = !!(d.company || d.email);
       writeRow_(dl, c, r, { '일시': now, '회사명': clean_(d.company, 200), '담당자': clean_(d.name, 100), '연락처': clean_(d.phone, 50), '이메일': clean_(d.email, 200),
         '자료명': clean_(d.title, 200), '구분': who ? '연락처 남김' : '익명', '후속 상태': who ? '미연락' : '', '받은 페이지': clean_(d.page, 200), '언어': clean_(d.lang, 5), '유입 경로': clean_(d.ref, 300), '파일': clean_(d.file, 300) });
-      newRow = upsertClient_(d, 'download', now);
+      newRow = upsertClient_(Object.assign({}, d, { title: '' }), 'download', now); // title = 자료명 (직급·직책 아님)
       if (who) dlNote = { d: d, r: r, sh: dl };
     } else {
       if (!d.company && !d.email && !d.message) return json_({ ok: false });
