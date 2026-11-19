@@ -37,7 +37,7 @@ const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일',
 const SET_SHEET = '설정';
 // 아래 값은 기본값. 설정 탭 "운영 설정 · 값" 표에 같은 항목이 있으면 그 값을 씀 (코드 수정 없이 시트에서 변경)
 const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
-const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일', sender: '알림 발신자 이름' };
+const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일', sender: '알림 발신자 이름', mkt: '마케팅 지표 시트 주소' };
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -460,7 +460,29 @@ function syncAccess_() {
 }
 /** 필요할 때 실행: 권한 현황 즉시 갱신 */
 function 권한점검() { return syncAccess_(); }
+// ── 마케팅 지표 시트로 월별 실제 영업 수치 보내기: 문의(해당 없음 제외)·자료 다운로드(개인정보 동의·연락처 남김) ──
+//  설정 탭 운영 설정 "마케팅 지표 시트 주소"(시트 주소 또는 ID)가 있을 때만. 대상 시트 "영업_월별" 탭을 통째로 새로 씀
+function pushMarketing_() {
+  const raw = String(cfg_()[CFG.mkt] || '').trim(); if (!raw) return;
+  const id = (raw.match(/\/d\/([\w-]{20,})/) || [])[1] || raw;
+  const m = {}, mon = (d) => (d instanceof Date ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM') : String(d).slice(0, 7));
+  const get = (k) => (m[k] = m[k] || [k, 0, 0]);
+  const sh = sheet_(), c = cols_(sh), n = nextRow_(sh, c) - 2;
+  if (n > 0) sh.getRange(2, 1, n, sh.getLastColumn()).getValues().forEach((v) => {
+    const t = v[c[FIELDS.time] - 1]; if (!t || v[c[FIELDS.source] - 1] === 'download' || NA_STAGE.test(String(c[H.stage] ? v[c[H.stage] - 1] : ''))) return;
+    get(mon(t))[1]++;
+  });
+  const dl = dlSheet_(), dc = cols_(dl), dn = nextRowBy_(dl, dc, '일시') - 2;
+  if (dn > 0) dl.getRange(2, 1, dn, dl.getLastColumn()).getValues().forEach((v) => {
+    const t = v[dc['일시'] - 1]; if (!t || v[dc['구분'] - 1] !== '연락처 남김') return; get(mon(t))[2]++;
+  });
+  const out = SpreadsheetApp.openById(id); let ts = out.getSheetByName('영업_월별'); if (!ts) ts = out.insertSheet('영업_월별');
+  const rows = [['월', '문의 접수(실제)', '자료 다운로드(동의)']].concat(Object.keys(m).sort().map((k) => m[k]));
+  ts.clearContents(); ts.getRange(1, 1, rows.length, 3).setValues(rows); ts.getRange(1, 1, 1, 3).setFontWeight('bold');
+  ts.getRange(1, 5).setValue('문의 접수 시트에서 1시간마다 자동 기록 (수정 금지). 마지막: ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'));
+}
 function hourlyJob() {
+  try { pushMarketing_(); } catch (err) {}
   try { syncAccess_(); } catch (err) {}
   try { syncStatus_(); } catch (err) {}
   try { overdueWatch(); } catch (err) {}
