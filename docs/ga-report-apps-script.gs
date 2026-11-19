@@ -179,6 +179,6 @@ function monthlyMail_(ss) {
   const d = new Date(); d.setDate(0); const last = ymd_(d).slice(0, 7); d.setDate(0); const prev = ymd_(d).slice(0, 7);
   const a = v.find((r) => r[0] === last), b = v.find((r) => r[0] === prev); if (!a) return;
   const line = (i) => ' - ' + SUM_HEAD[i] + ': ' + a[i] + (b && b[i] !== '' && a[i] !== '' ? ' (전월 ' + b[i] + ')' : '');
-  MailApp.sendEmail(to, '[홈페이지 월간 지표] ' + last, ['SMG 홈페이지 ' + last + ' 지표 요약입니다.', ''].concat([1, 4, 6, 7, 9, 10, 12, 13, 14].map(line))
-    .concat(['', '※ 구글 평균 순위는 숫자가 작을수록 좋음. 네이버 검색 노출수는 서치어드바이저에서 별도 확인', ss.getUrl()]).join('\n'));
+  MailApp.sendEmail({ to: to, name: 'SMG 홈페이지 지표', subject: '[홈페이지 월간 지표] ' + last, body: ['SMG 홈페이지 ' + last + ' 지표 요약입니다.', ''].concat([1, 4, 6, 7, 9, 10, 12, 13, 14].map(line))
+    .concat(['', '※ 구글 평균 순위는 숫자가 작을수록 좋음. 네이버 검색 노출수는 서치어드바이저에서 별도 확인', ss.getUrl()]).join('\n') });
 }

@@ -37,7 +37,7 @@ const H = { owner: '사내 담당', memo: '처리 메모', replied: '회신일',
 const SET_SHEET = '설정';
 // 아래 값은 기본값. 설정 탭 "운영 설정 · 값" 표에 같은 항목이 있으면 그 값을 씀 (코드 수정 없이 시트에서 변경)
 const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
-const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일' };
+const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일', sender: '알림 발신자 이름' };
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
 const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
@@ -118,7 +118,12 @@ function teamMails_() { // 설정 탭 "알림 팀"·"알림 사용"·"알림 메
   return m;
 }
 function fmtD_(d) { return d instanceof Date ? Utilities.formatDate(d, Session.getScriptTimeZone(), 'MM-dd(E)') : String(d || ''); }
-function mail_(to, subject, body) { if (!to) return false; try { MailApp.sendEmail({ to: to, subject: String(subject).slice(0, 200), body: body }); return true; } catch (err) { return false; } }
+// 알림 메일 보낸 사람 이름 (발신 주소는 시트 소유 계정으로 고정됨). 설정 탭 운영 설정 "알림 발신자 이름"으로 변경 가능
+function mail_(to, subject, body) {
+  if (!to) return false;
+  let name = 'SMG 홈페이지 문의'; try { name = String(cfg_()[CFG.sender] || '').trim() || name; } catch (err) {}
+  try { MailApp.sendEmail({ to: to, subject: String(subject).slice(0, 200), body: body, name: name }); return true; } catch (err) { return false; }
+}
 function rowLink_(r) { return ss_().getUrl() + '#gid=' + sheet_().getSheetId() + '&range=A' + r; }
 function stampAck_(sh, c, r, o) { // 사내 담당이 처음 들어오면 접수 확인 시각 기록
   if (c[H.ack] && o[H.owner] && !o[H.ack]) sh.getRange(r, c[H.ack]).setValue(new Date());
