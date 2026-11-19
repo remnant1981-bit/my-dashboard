@@ -51,7 +51,7 @@
     const title = dl ? dl.title : file === String((D.settings || {}).catalogPdf || '').split('#')[0] ? 'SMG Products Catalogue' : String(label || '').trim().slice(0, 80) || decodeURIComponent(file.split('/').pop());
     let who = {}; try { who = JSON.parse(sessionStorage.getItem('smg_dl_who') || '{}'); } catch (e) {}
     const ref = (() => { try { const r = document.referrer; return r && new URL(r).host !== location.host ? new URL(r).host : ''; } catch (e) { return ''; } })();
-    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '', phone: who.phone || '' };
+    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '', phone: who.phone || '', product: who.product || '' };
     try { fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(row), keepalive: true }); } catch (e) {}
   }
   // 문의 제품의 카테고리 id (구글 시트 "제품 분류"·담당 팀 자동 배정용). 관심제품·견적품목에 들어 있는 모델명·제품명으로 찾음 (문의 내용은 오인 방지로 제외)

@@ -38,8 +38,8 @@ const SET_SHEET = '설정';
 // 아래 값은 기본값. 설정 탭 "운영 설정 · 값" 표에 같은 항목이 있으면 그 값을 씀 (코드 수정 없이 시트에서 변경)
 const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
 const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일', sender: '알림 발신자 이름', mkt: '마케팅 지표 시트 주소' };
-const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일'];
-const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키'];
+const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일', '관심 제품', '담당 팀'];
+const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키', '담당 팀'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
 const FREE_MAIL = /@(gmail|naver|daum|hanmail|nate|kakao|hotmail|outlook|live|yahoo|icloud|me|korea|empas|paran|chol|dreamwiz)\./i;
 const LOG_LABELS = ['일시', '시트', '셀', '회사명', '항목', '이전 값', '새 값', '수정자', '경로'];
@@ -97,6 +97,26 @@ function repliedStages_() { // 설정 탭 "진행 단계" 표에서 "회신으�
     if (s && f && sh.getLastRow() > 1) { const l = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().filter((r) => String(r[s - 1]).trim() && r[f - 1] === true).map((r) => String(r[s - 1]).trim()); if (l.length) return l; }
   } catch (err) {}
   return REPLIED_STAGES;
+}
+// 설정 탭 "제품 분류 → 담당 팀" 표로 관심 제품(쉼표 구분)의 담당 팀 찾기 (공동 담당 포함). 없으면 "제품 미선택 문의 담당 팀"
+function catTeams_(names) {
+  const want = String(names || '').split(/\s*,\s*/).filter(Boolean), out = [];
+  try {
+    const sh = ss_().getSheetByName(SET_SHEET), c = cols_(sh), k = c['제품 분류'], t1 = c['담당 팀'], t2 = c['담당 팀 2'];
+    if (k && t1 && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach((r) => {
+      if (want.indexOf(String(r[k - 1]).trim()) >= 0) [r[t1 - 1], t2 ? r[t2 - 1] : ''].forEach((x) => { x = String(x || '').trim(); if (x && out.indexOf(x) < 0) out.push(x); });
+    });
+  } catch (err) {}
+  return out.join(', ') || String(cfg_()['제품 미선택 문의 담당 팀'] || '').trim();
+}
+// 관심 업체 "담당 팀": 비어 있을 때만 채움 (사람이 바꾼 값 유지)
+function clTeam_(company, team) {
+  try {
+    const k = key_(company); if (!k || !team) return;
+    const sh = clSheet_(), c = cols_(sh); if (!c['담당 팀'] || !c['키'] || sh.getLastRow() < 2) return;
+    const keys = sh.getRange(2, c['키'], sh.getLastRow() - 1, 1).getValues().map((r) => r[0]), i = keys.indexOf(k);
+    if (i >= 0 && !String(sh.getRange(i + 2, c['담당 팀']).getValue()).trim()) sh.getRange(i + 2, c['담당 팀']).setValue(team);
+  } catch (err) {}
 }
 function notifyAdmin_() {
   const v = String(cfg_()[CFG.admin] || '').split(/[,;\s]+/).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).join(',');
@@ -187,11 +207,13 @@ function doPost(e) {
     const now = new Date();
     if (d.kind === 'download') { // 자료 다운로드 이력 (연락처 없이도 기록)
       if (!d.file) return json_({ ok: false });
+      d.product = catName_(d.product); const team = d.product ? catTeams_(d.product) : '';
       const dl = dlSheet_(), c = cols_(dl), r = nextRowBy_(dl, c, '일시'), who = !!(d.company || d.email);
       writeRow_(dl, c, r, { '일시': now, '회사명': clean_(d.company, 200), '담당자': clean_(d.name, 100), '연락처': clean_(d.phone, 50), '이메일': clean_(d.email, 200),
-        '자료명': clean_(d.title, 200), '구분': who ? '연락처 남김' : '익명', '후속 상태': who ? '미연락' : '', '받은 페이지': clean_(d.page, 200), '언어': clean_(d.lang, 5), '유입 경로': clean_(d.ref, 300), '파일': clean_(d.file, 300) });
+        '자료명': clean_(d.title, 200), '구분': who ? '연락처 남김' : '익명', '후속 상태': who ? '미연락' : '', '받은 페이지': clean_(d.page, 200), '언어': clean_(d.lang, 5), '유입 경로': clean_(d.ref, 300), '파일': clean_(d.file, 300), '관심 제품': clean_(d.product, 200), '담당 팀': team });
       newRow = upsertClient_(Object.assign({}, d, { title: '' }), 'download', now); // title = 자료명 (직급·직책 아님)
-      if (who) dlNote = { d: d, r: r, sh: dl };
+      clTeam_(d.company, team);
+      if (who) dlNote = { d: Object.assign({ team: team }, d), r: r, sh: dl };
     } else {
       if (!d.company && !d.email && !d.message) return json_({ ok: false });
       if (d.source === 'download') return json_({ ok: true }); // 다운로드 신청은 위 "다운로드 이력"으로만 기록 (문의 탭은 견적·기술 문의 전용)
@@ -202,7 +224,7 @@ function doPost(e) {
         sh.getRange(r, col).setValue(k === 'time' ? now : k === 'status' ? '신규' : k === 'source' ? clean_(d.source || 'form') : k === 'category' ? clean_(catName_(d.category), 100) : clean_(d[k]));
       });
       if (c[H.updated]) sh.getRange(r, c[H.updated]).setValue(now);
-      newRow = upsertClient_(d, 'inquiry', now);
+      newRow = upsertClient_(d, 'inquiry', now); clTeam_(d.company, catTeams_(catName_(d.category)));
       inq = { sh: sh, c: c, r: r };
     }
   } finally { lock.releaseLock(); }
@@ -310,7 +332,7 @@ function rebuildClients() {
   const dl = dlSheet_(), dc = cols_(dl), dn = nextRowBy_(dl, dc, '일시') - 2;
   if (dn > 0) dl.getRange(2, 1, dn, dl.getLastColumn()).getValues().forEach((v) => {
     const g = (h) => (dc[h] ? v[dc[h] - 1] : '');
-    if (g('회사명')) items.push({ d: { company: g('회사명'), name: g('담당자'), phone: g('연락처'), email: g('이메일') }, kind: 'download', t: new Date(g('일시')) });
+    if (g('회사명')) items.push({ d: { company: g('회사명'), name: g('담당자'), phone: g('연락처'), email: g('이메일'), product: g('관심 제품') }, kind: 'download', t: new Date(g('일시')) });
   });
   items.sort((a, b) => a.t - b.t).forEach((it) => upsertClient_(it.d, it.kind, it.t));
 }
@@ -339,7 +361,7 @@ function downloadMail_(x) {
   const d = x.d, link = ss_().getUrl() + '#gid=' + x.sh.getSheetId() + '&range=A' + x.r;
   mail_(to, '[자료 다운로드] ' + (d.company || '') + ' — ' + (d.title || d.file || ''),
     ['홈페이지에서 연락처를 남기고 자료를 받았습니다.', '', '회사명: ' + (d.company || ''), '담당자: ' + (d.name || ''), '이메일: ' + (d.email || ''), '연락처: ' + (d.phone || ''),
-     '자료: ' + (d.title || d.file || ''), '받은 페이지: ' + (d.page || ''), '', '▶ 후속 연락 후 "다운로드 이력" 탭의 후속 상태를 바꿔 주세요', link].join('\n'));
+     '자료: ' + (d.title || d.file || ''), '관심 제품: ' + (d.product || ''), '담당 팀: ' + (d.team || ''), '받은 페이지: ' + (d.page || ''), '', '▶ 후속 연락 후 "다운로드 이력" 탭의 후속 상태를 바꿔 주세요', link].join('\n'));
 }
 
 // ── 새 문의 알림: 담당 팀(설정 탭 알림 메일) + 관리자(NOTIFY_EMAIL) ──

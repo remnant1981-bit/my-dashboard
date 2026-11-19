@@ -68,6 +68,7 @@
         e.preventDefault(); e.stopPropagation();
         const go = () => { ss.set('smg_dl_ok', '1'); a.dataset.gateOk = '1'; a.click(); delete a.dataset.gateOk; };
         const title = titleOf(href);
+        const curP = prodBy(document.body.dataset.pid || new URLSearchParams(location.search).get('id') || ''), curCat = curP ? curP.category : '';
         const { m, close } = modal(`<span class="chip">Download</span><h3 style="margin-top:12px">${esc(title)}</h3>
           <p class="dg-desc">${t('자료를 받으시는 분의 정보를 남겨주시면 제품 업데이트·기술 자료를 안내해 드립니다.', 'Leave your details and we will keep you updated with product and technical information.')}</p>
           <form class="dg-form" novalidate><input type="text" name="website" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true">
@@ -75,6 +76,7 @@
             <label>${t('성함', 'Name')}<span class="req">*</span><input name="name" required autocomplete="name"></label>
             <label>${st.downloadWorkEmail ? t('회사 이메일', 'Business email') : t('이메일', 'Email')}<span class="req">*</span><input name="email" type="email" required autocomplete="email"${st.downloadWorkEmail ? ` placeholder="${t('name@회사도메인', 'name@company.com')}"` : ''}></label>
             <label>${t('연락처 (선택)', 'Phone (optional)')}<input name="phone" type="tel" autocomplete="tel"></label>
+            <fieldset class="dg-prod"><legend>${t('관심 제품', 'Products of interest')}<span class="req">*</span> <small>${t('하나 이상 선택', 'Select one or more')}</small></legend>${(D.categories || []).map((c) => `<label><input type="checkbox" name="prod" value="${esc(c.id)}"${c.id === curCat ? ' checked' : ''}><span>${esc(EN ? c.nameEn || c.name : c.name)}</span></label>`).join('')}</fieldset>
             <label class="dg-agree"><input type="checkbox" name="agree" required> <span>${t('[필수] 개인정보 수집·이용 동의 — 항목: 회사명·성함·이메일·연락처 / 목적: 자료 제공 기록 및 제품·기술 정보 안내 / 보유: 3년', '[Required] I consent to the collection of company, name, email and phone to record this download and receive product information (retained 3 years).')} <a href="${L('privacy.html')}" target="_blank" rel="noopener">${t('전문', 'Policy')}</a></span></label>
             <p class="dg-err" hidden></p>
             <div class="dg-act">${gate === 'optional' ? `<button type="button" class="btn btn-line btn-sm dg-skip">${t('건너뛰고 받기', 'Skip & download')}</button>` : ''}<button class="btn btn-primary btn-sm">${t('정보 남기고 받기', 'Submit & download')}</button></div></form>`, 'dg-modal');
@@ -83,10 +85,11 @@
         f.onsubmit = (ev) => {
           ev.preventDefault();
           const d = Object.fromEntries(new FormData(f).entries());
-          const err = !d.company.trim() || !d.name.trim() ? t('회사명과 성함을 입력해 주세요', 'Please enter company and name') : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) ? t('이메일을 확인해 주세요', 'Please check your email') : JUNK_MAIL(d.email) ? t('실제 사용하는 이메일 주소를 입력해 주세요', 'Please enter an email address you actually use') : st.downloadWorkEmail && FREE_MAIL.test(d.email.trim()) ? t('회사 이메일 주소를 입력해 주세요 (Gmail·네이버 등 개인 메일 불가)', 'Please use your business email address (personal email such as Gmail is not accepted)') : !d.agree ? t('개인정보 수집·이용에 동의해 주세요', 'Please agree to the privacy terms') : '';
+          const prods = new FormData(f).getAll('prod'); d.product = prods.join(', ');
+          const err = !d.company.trim() || !d.name.trim() ? t('회사명과 성함을 입력해 주세요', 'Please enter company and name') : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) ? t('이메일을 확인해 주세요', 'Please check your email') : JUNK_MAIL(d.email) ? t('실제 사용하는 이메일 주소를 입력해 주세요', 'Please enter an email address you actually use') : st.downloadWorkEmail && FREE_MAIL.test(d.email.trim()) ? t('회사 이메일 주소를 입력해 주세요 (Gmail·네이버 등 개인 메일 불가)', 'Please use your business email address (personal email such as Gmail is not accepted)') : !prods.length ? t('관심 제품을 하나 이상 선택해 주세요', 'Please select at least one product of interest') : !d.agree ? t('개인정보 수집·이용에 동의해 주세요', 'Please agree to the privacy terms') : '';
           if (err) { const p = $('.dg-err', m); p.textContent = err; p.hidden = false; return; }
-          if (!d.website && S.sendInquiry) S.sendInquiry(`[${t('자료 다운로드', 'Download')}] ${title} - ${d.company}`, { type: t('자료 다운로드', 'Download'), source: 'download', company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim(), message: `${t('다운로드 자료', 'File')}: ${title}\n${href}` });
-          if (!d.website) ss.set('smg_dl_who', JSON.stringify({ company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim() })); // 같은 방문 중 다운로드 이력에 회사명 표시
+          if (!d.website && S.sendInquiry) S.sendInquiry(`[${t('자료 다운로드', 'Download')}] ${title} - ${d.company}`, { type: t('자료 다운로드', 'Download'), source: 'download', company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim(), product: d.product, message: `${t('다운로드 자료', 'File')}: ${title}\n${href}` });
+          if (!d.website) ss.set('smg_dl_who', JSON.stringify({ company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim(), product: d.product })); // 같은 방문 중 다운로드 이력에 회사명 표시
           close(); S.toast(t('감사합니다. 다운로드를 시작합니다.', 'Thank you. Your download is starting.')); go();
         };
         setTimeout(() => { const i = $('input[name=company]', m); if (i) i.focus(); }, 50);
