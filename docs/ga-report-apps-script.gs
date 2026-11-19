@@ -149,7 +149,7 @@ function measureRanks_(ss) {
 }
 
 // ── 월별 요약 (방문 + 검색 + 영업 행동 + 키워드 노출) ──
-const SUM_HEAD = ['월', '사용자', '신규 사용자', '세션', '페이지뷰', '평균 세션 시간(초)', '문의 접수', '자료 다운로드 클릭', '전화 클릭',
+const SUM_HEAD = ['월', '사용자', '신규 사용자', '세션', '페이지뷰', '평균 세션 시간(초)', '문의 접수', '자료 다운로드(동의)', '전화 클릭',
   '구글 노출수', '구글 클릭수', '구글 CTR', '구글 평균 순위', '구글 1페이지 키워드', '네이버 1페이지 키워드', '측정 키워드 수'];
 function monthly_(ss) {
   const m = {}, get = (k) => (m[k] = m[k] || { u: 0, nu: 0, s: 0, pv: 0, dur: 0, lead: 0, dl: 0, tel: 0, imp: 0, clk: 0, posw: 0, g1: '', n1: '', kw: '' });
@@ -158,6 +158,9 @@ function monthly_(ss) {
   rows('일별').forEach((r) => { if (!r[0]) return; const x = get(mon(r[0])); x.u += +r[1] || 0; x.nu += +r[2] || 0; x.s += +r[3] || 0; x.pv += +r[4] || 0; x.dur += (+r[5] || 0) * (+r[3] || 0); });
   rows('이벤트_일별').forEach((r) => { if (!r[0]) return; const x = get(mon(r[0])), n = +r[2] || 0;
     if (r[1] === 'generate_lead') x.lead += n; else if (r[1] === 'download_click') x.dl += n; else if (r[1] === 'tel_click') x.tel += n; });
+  // 문의·다운로드는 문의 접수 시트가 보내 주는 "영업_월별" 탭(실제 기록: 해당 없음 제외 문의, 개인정보 동의 다운로드)이 있으면 그 값을 씀
+  const real = rows('영업_월별').filter((r) => r[0]);
+  if (real.length) { Object.keys(m).forEach((k) => { m[k].lead = 0; m[k].dl = 0; }); real.forEach((r) => { const x = get(mon(r[0])); x.lead = +r[1] || 0; x.dl = +r[2] || 0; }); }
   rows('검색_일별').forEach((r) => { if (!r[0]) return; const x = get(mon(r[0])); x.imp += +r[1] || 0; x.clk += +r[2] || 0; x.posw += (+r[4] || 0) * (+r[1] || 0); });
   // 키워드_순위: 측정일 | 엔진 | 구분 | 키워드 | 순위(숫자, 미노출은 빈칸) | 노출 URL | 비고  → 월별 1페이지(10위 이내) 키워드 수
   const kw = {};
