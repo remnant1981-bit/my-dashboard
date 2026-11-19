@@ -49,6 +49,13 @@
     /* ---------- 2. Download lead form (자료 다운로드 시 연락처) ---------- */
     const gate = st.downloadGate || 'off';
     // 개인 메일 도메인 (settings.downloadWorkEmail 이 켜져 있으면 다운로드 신청 불가)
+    // 의미 없는 이메일 (자판 연타·반복 글자·테스트용 도메인) 차단
+    const JUNK_MAIL = (e) => {
+      const [l = '', d = ''] = String(e).toLowerCase().trim().split('@');
+      const lab = d.split('.')[0];
+      const row = (s) => /^([qwertyuiop]+|[asdfghjkl]+|[zxcvbnm]+)$/.test(s);
+      return /^(example|test|testing|sample|asdf|asd|qwer|qwerty|abc|abcd|aaa|xxx|none|no|nomail|noemail|fake|temp)$/.test(lab) || /^(.)\1+$/.test(lab) || /^(.)\1+$/.test(l) || (row(l) && row(lab));
+    };
     const FREE_MAIL = { test: (e) => /^(gmail\.com|googlemail\.com|naver\.com|daum\.net|hanmail\.net|nate\.com|kakao\.com|hotmail\.com|outlook\.com|outlook\.kr|live\.com|live\.co\.kr|msn\.com|yahoo\.com|yahoo\.co\.kr|ymail\.com|icloud\.com|me\.com|mac\.com|aol\.com|korea\.com|empas\.com|paran\.com|chol\.com|dreamwiz\.com|hanmir\.com|lycos\.co\.kr|qq\.com|163\.com|126\.com|sina\.com|proton\.me|protonmail\.com|pm\.me|mail\.com|gmx\.com|gmx\.de|yandex\.com|yandex\.ru|mail\.ru|tutanota\.com|hushmail\.com)$/i.test(String(e).split('@').pop().trim()) };
     if (gate !== 'off') {
       const files = new Set((D.downloads || []).map((d) => String(d.file || '').split('#')[0]).filter((f) => f && !/^data:/.test(f)));
@@ -76,7 +83,7 @@
         f.onsubmit = (ev) => {
           ev.preventDefault();
           const d = Object.fromEntries(new FormData(f).entries());
-          const err = !d.company.trim() || !d.name.trim() ? t('회사명과 성함을 입력해 주세요', 'Please enter company and name') : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) ? t('이메일을 확인해 주세요', 'Please check your email') : st.downloadWorkEmail && FREE_MAIL.test(d.email.trim()) ? t('회사 이메일 주소를 입력해 주세요 (Gmail·네이버 등 개인 메일 불가)', 'Please use your business email address (personal email such as Gmail is not accepted)') : !d.agree ? t('개인정보 수집·이용에 동의해 주세요', 'Please agree to the privacy terms') : '';
+          const err = !d.company.trim() || !d.name.trim() ? t('회사명과 성함을 입력해 주세요', 'Please enter company and name') : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()) ? t('이메일을 확인해 주세요', 'Please check your email') : JUNK_MAIL(d.email) ? t('실제 사용하는 이메일 주소를 입력해 주세요', 'Please enter an email address you actually use') : st.downloadWorkEmail && FREE_MAIL.test(d.email.trim()) ? t('회사 이메일 주소를 입력해 주세요 (Gmail·네이버 등 개인 메일 불가)', 'Please use your business email address (personal email such as Gmail is not accepted)') : !d.agree ? t('개인정보 수집·이용에 동의해 주세요', 'Please agree to the privacy terms') : '';
           if (err) { const p = $('.dg-err', m); p.textContent = err; p.hidden = false; return; }
           if (!d.website && S.sendInquiry) S.sendInquiry(`[${t('자료 다운로드', 'Download')}] ${title} - ${d.company}`, { type: t('자료 다운로드', 'Download'), source: 'download', company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim(), message: `${t('다운로드 자료', 'File')}: ${title}\n${href}` });
           if (!d.website) ss.set('smg_dl_who', JSON.stringify({ company: d.company.trim(), name: d.name.trim(), email: d.email.trim(), phone: (d.phone || '').trim() })); // 같은 방문 중 다운로드 이력에 회사명 표시
