@@ -967,6 +967,12 @@ a.news-row:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
 .dg-form .dg-agree a{text-decoration:underline}
 .dg-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .dg-err{color:#d92d20;font-size:13.5px;margin:0}
+.dg-prod{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.dg-prod legend{font-size:13.5px;font-weight:600;margin-bottom:6px;padding:0}
+.dg-prod legend small{font-weight:400;color:var(--muted);font-size:12px}
+.dg-form .dg-prod label{display:inline-flex;align-items:center;gap:6px;font-weight:500;font-size:13px;padding:6px 10px;border:1px solid var(--line-2);border-radius:999px;cursor:pointer}
+.dg-form .dg-prod label:has(input:checked){border-color:var(--blue,#175cd3);background:rgba(23,92,211,.08)}
+.dg-prod input{margin:0}
 .dg-act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
 /* certificate originals */
 .ct-extra{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:10px}
@@ -1034,3 +1040,5 @@ a[href^="mailto:"]{--mail:#c81e15}
 .yt-modal .modal-box{max-width:1000px;padding:0;background:#000;overflow:visible;border-radius:14px}
 .yt-modal .yt{max-width:none;border-radius:14px}
 .yt-modal .modal-x{right:-4px;top:-44px;color:#fff}
+
+.field label .opt{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}

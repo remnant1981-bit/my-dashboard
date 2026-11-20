@@ -51,7 +51,7 @@
     const title = dl ? dl.title : file === String((D.settings || {}).catalogPdf || '').split('#')[0] ? 'SMG Products Catalogue' : String(label || '').trim().slice(0, 80) || decodeURIComponent(file.split('/').pop());
     let who = {}; try { who = JSON.parse(sessionStorage.getItem('smg_dl_who') || '{}'); } catch (e) {}
     const ref = (() => { try { const r = document.referrer; return r && new URL(r).host !== location.host ? new URL(r).host : ''; } catch (e) { return ''; } })();
-    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '', phone: who.phone || '' };
+    const row = { kind: 'download', title, file: decodeURIComponent(file.split('/').pop()), page: location.pathname, lang: EN ? 'EN' : 'KO', ref, company: who.company || '', name: who.name || '', email: who.email || '', phone: who.phone || '', product: who.product || '' };
     try { fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(row), keepalive: true }); } catch (e) {}
   }
   // 문의 제품의 카테고리 id (구글 시트 "제품 분류"·담당 팀 자동 배정용). 관심제품·견적품목에 들어 있는 모델명·제품명으로 찾음 (문의 내용은 오인 방지로 제외)
@@ -62,7 +62,7 @@
     return ids.join(',');
   }
   async function sendInquiry(subject, data) {
-    const cat = inquiryCats(data); if (cat) data = Object.assign({}, data, { category: cat });
+    const cat = [data.category, inquiryCats(data)].filter(Boolean).join(',').split(',').filter((x, i, a) => x && a.indexOf(x) === i).join(','); if (cat) data = Object.assign({}, data, { category: cat });
     saveToSheet(subject, data);
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
     const viaEndpoint = () => ep && postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data));
@@ -439,11 +439,11 @@
       e.preventDefault();
       if (form.website && form.website.value) return; // honeypot
       let ok = true;
-      $$('[data-req]', form).forEach((inp) => {
+      $$('[data-req], [name=phone]', form).forEach((inp) => {
         const f = inp.closest('.field') || inp.closest('.agree');
-        let bad = inp.type === 'checkbox' ? !inp.checked : !inp.value.trim();
+        let bad = inp.hasAttribute('data-req') && (inp.type === 'checkbox' ? !inp.checked : !inp.value.trim());
         if (!bad && inp.type === 'email') bad = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inp.value.trim());
-        if (!bad && inp.name === 'phone') bad = !/^[0-9+\-\s()]{8,20}$/.test(inp.value.trim());
+        if (!bad && inp.name === 'phone' && inp.value.trim()) bad = !/^[0-9+\-\s()]{8,20}$/.test(inp.value.trim());
         if (f) f.classList.toggle('invalid', bad);
         if (bad) ok = false;
       });

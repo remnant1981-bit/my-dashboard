@@ -41,7 +41,7 @@ T = {
  '[필수] 개인정보 수집·이용 동의': '[Required] Consent to collection and use of personal information', '견적 · 기술 문의': 'Quotation · Technical Inquiry', '견적문의': 'Contact',
  '관심 제품': 'Product of interest', '담당자명': 'Your name', '담당자명을 입력해 주세요': 'Please enter your name', '문의 내용': 'Message', '문의 내용을 입력해 주세요': 'Please enter your message',
  '문의 유형': 'Inquiry type', '문의 접수하기': 'Submit inquiry', '문의를 남겨주시면 담당 엔지니어가 빠르게 회신드립니다.': 'Leave your inquiry and our engineers will reply promptly.',
- '수집항목: 회사명, 담당자명, 연락처, 이메일 (선택: 직급·직책) / 목적: 문의 응대 및 견적 회신 / 보유기간: 문의 처리 후 3년.': 'Items: company, name, phone, email (optional: job title) / Purpose: responding to inquiries and quotations / Retention: 3 years after handling.',
+ '수집항목: 회사명, 담당자명, 이메일 (선택: 직급·직책, 연락처) / 목적: 문의 응대 및 견적 회신 / 보유기간: 문의 처리 후 3년.': 'Items: company, name, email (optional: job title, phone) / Purpose: responding to inquiries and quotations / Retention: 3 years after handling.', '선택 · 빠른 사양 확인 시 권장': 'optional · recommended for faster spec checks',
  '연락처': 'Phone', '예상 수량 / 납기': 'Expected quantity / lead time', '올바른 연락처를 입력해 주세요': 'Please enter a valid phone number', '올바른 이메일을 입력해 주세요': 'Please enter a valid email',
  '이메일': 'Email', '전문 보기': 'Read policy', '회사명': 'Company', '회사명을 입력해 주세요': 'Please enter your company name',
  '사용 환경(온도·압력·매체), 요구 사양, 인증 필요 여부 등을 적어주시면 더 정확한 답변이 가능합니다.': 'Operating conditions (temperature, pressure, medium), required specifications and certification needs help us answer accurately.',

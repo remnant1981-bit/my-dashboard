@@ -121,36 +121,55 @@
     const STEPS = [
       ['company', () => t('회사명을 알려주세요.', 'What is your company name?')],
       ['name', () => t('담당자 성함을 알려주세요.', 'May I have your name?')],
-      ['contact', () => t('회신 받으실 <b>이메일 또는 전화번호</b>를 입력해 주세요.', 'Please enter your <b>email or phone number</b> for our reply.')],
+      ['title', () => t('직급·직책을 알려주세요. <small>(선택)</small>', 'Your job title? <small>(optional)</small>'), true],
+      ['email', () => t('회신 받으실 <b>이메일</b>을 입력해 주세요.', 'Please enter your <b>email</b> for our reply.')],
+      ['phone', () => t('연락 가능한 <b>전화번호</b>를 입력해 주세요. <small>(선택)</small>', 'Your <b>phone number</b>? <small>(optional)</small>'), true],
+      ['qty', () => t('수량·희망 납기를 알려주세요. <small>(선택, 예: 50EA / 2027년 1월)</small>', 'Quantity and desired lead time? <small>(optional, e.g. 50 pcs / Jan 2027)</small>'), true],
       ['message', () => { const q = S.quote ? S.quote.getQ() : []; return t('문의 내용을 자세히 적어주세요. (사용 환경·온도·수량·납기 등)', 'Please describe your request (conditions, temperature, quantity, lead time).') + (q.length ? `<div class="cm-note">${t(`견적함의 ${q.length}개 품목이 함께 전달됩니다.`, `${q.length} item(s) from your quote list will be included.`)}</div>` : ''); }]
     ];
+    // 제품 분류 선택 (필수). "기타"를 고르면 기타 문의로 접수 → 시트에서 관리자 배정
+    const catName = (c) => (EN ? c.nameEn || c.name : c.name);
+    const catQuick = () => (D.categories || []).map((c) => ['cat:' + c.id, catName(c)]).concat([['cat:etc', t('기타·잘 모르겠음', 'Other / not sure')], ['cancel', t('취소', 'Cancel')]]);
     function startFlow(kind) {
-      state.flow = { kind, step: 0 }; state.data = { type: kind === 'quote' ? D.inquiryTypes[0] : (D.inquiryTypes[1] || D.inquiryTypes[0]) }; persist();
-      bot(t('네, 바로 접수해 드리겠습니다. 몇 가지만 여쭤볼게요.', 'Sure, let me take your request. Just a few questions.') + '<br>' + STEPS[0][1](), [['cancel', t('취소', 'Cancel')]]);
+      state.flow = { kind, step: -1 }; state.data = { type: kind === 'quote' ? D.inquiryTypes[0] : (D.inquiryTypes[1] || D.inquiryTypes[0]) }; persist();
+      bot(t('네, 바로 접수해 드리겠습니다. 몇 가지만 여쭤볼게요.', 'Sure, let me take your request. Just a few questions.') + '<br>' + t('<b>어떤 제품</b>에 대한 문의인가요? 아래에서 선택해 주세요.', '<b>Which product</b> is this about? Please choose below.'), catQuick());
+    }
+    const stepQuick = (i) => (STEPS[i] && STEPS[i][2] ? [['skip', t('건너뛰기', 'Skip')]] : []).concat([['cancel', t('취소', 'Cancel')]]);
+    async function pickCat(id) {
+      const c = (D.categories || []).find((x) => x.id === id);
+      if (c) { state.data.cat = c.id; state.data.product = catName(c); }
+      else { state.data.cat = ''; state.data.product = ''; state.data.type = D.inquiryTypes[D.inquiryTypes.length - 1]; }
+      state.flow.step = 0; persist();
+      await bot(STEPS[0][1](), stepQuick(0));
     }
     async function flowInput(v) {
-      const f = state.flow, key = STEPS[f.step][0];
-      if (key === 'contact') {
-        const isMail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), isTel = /^[0-9+\-\s()]{8,20}$/.test(v);
-        if (!isMail && !isTel) { await bot(t('이메일(예: name@company.com) 또는 전화번호(예: 010-1234-5678) 형식으로 입력해 주세요.', 'Please enter a valid email (name@company.com) or phone number.'), [['cancel', t('취소', 'Cancel')]]); return; }
-        if (isMail) state.data.email = v; else state.data.phone = v;
-      } else state.data[key] = v.slice(0, 1000);
+      const f = state.flow;
+      if (f.step < 0) { // 제품 분류 단계에서 글자로 입력한 경우: 분류 이름과 맞으면 선택, 아니면 버튼 안내
+        const nv = norm(v), c = (D.categories || []).find((x) => [x.name, x.nameEn, x.id].some((n) => n && (nv.includes(norm(n)) || norm(n).includes(nv) && nv.length >= 2)));
+        if (c) return pickCat(c.id);
+        await bot(t('아래 버튼에서 제품 분류를 선택해 주세요. 해당 없으면 <b>기타·잘 모르겠음</b>을 눌러 주세요.', 'Please choose a product category below, or <b>Other / not sure</b>.'), catQuick()); return;
+      }
+      const key = STEPS[f.step][0];
+      if (key === 'phone' && v && !/^[0-9+\-\s()]{8,20}$/.test(v)) { await bot(t('전화번호 형식으로 입력해 주세요. (예: 010-1234-5678)', 'Please enter a valid phone number.'), stepQuick(f.step)); return; }
+      if (key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { await bot(t('이메일 형식으로 입력해 주세요. (예: name@company.com)', 'Please enter a valid email (name@company.com).'), stepQuick(f.step)); return; }
+      if (!v && !STEPS[f.step][2]) { await bot(STEPS[f.step][1](), stepQuick(f.step)); return; }
+      state.data[key] = v.slice(0, 1000);
       f.step++; persist();
-      if (f.step < STEPS.length) { await bot(STEPS[f.step][1](), [['cancel', t('취소', 'Cancel')]]); return; }
+      if (f.step < STEPS.length) { await bot(STEPS[f.step][1](), stepQuick(f.step)); return; }
       const d = state.data;
-      await bot(`${t('아래 내용으로 접수할까요?', 'Shall I submit the following?')}<dl class="cm-sum"><dt>${t('유형', 'Type')}</dt><dd>${esc(d.type)}</dd><dt>${t('회사', 'Company')}</dt><dd>${esc(d.company)}</dd><dt>${t('담당자', 'Name')}</dt><dd>${esc(d.name)}</dd><dt>${t('연락처', 'Contact')}</dt><dd>${esc(d.email || d.phone)}</dd><dt>${t('내용', 'Message')}</dt><dd>${esc(d.message)}</dd></dl><div class="cm-note">${t('[필수] 개인정보(회사명·성함·연락처) 수집·이용에 동의합니다. 목적: 문의 응대 / 보유: 처리 후 3년', '[Required] I consent to the collection of company, name and contact for responding to this inquiry (retained 3 years).')}</div>`, [['submit', t('동의하고 접수', 'Agree & submit')], ['cancel', t('취소', 'Cancel')]]);
+      await bot(`${t('아래 내용으로 접수할까요?', 'Shall I submit the following?')}<dl class="cm-sum"><dt>${t('유형', 'Type')}</dt><dd>${esc(d.type)}</dd><dt>${t('제품', 'Product')}</dt><dd>${esc(d.product || t('기타', 'Other'))}</dd><dt>${t('회사', 'Company')}</dt><dd>${esc(d.company)}</dd><dt>${t('담당자', 'Name')}</dt><dd>${esc(d.name)}${d.title ? ' · ' + esc(d.title) : ''}</dd><dt>${t('이메일', 'Email')}</dt><dd>${esc(d.email)}</dd>${d.phone ? `<dt>${t('전화', 'Phone')}</dt><dd>${esc(d.phone)}</dd>` : ''}${d.qty ? `<dt>${t('수량·납기', 'Qty / lead time')}</dt><dd>${esc(d.qty)}</dd>` : ''}<dt>${t('내용', 'Message')}</dt><dd>${esc(d.message)}</dd></dl><div class="cm-note">${t('[필수] 개인정보(회사명·성함·연락처) 수집·이용에 동의합니다. 목적: 문의 응대 / 보유: 처리 후 3년', '[Required] I consent to the collection of company, name and contact for responding to this inquiry (retained 3 years).')}</div>`, [['submit', t('동의하고 접수', 'Agree & submit')], ['cancel', t('취소', 'Cancel')]]);
     }
     async function submit() {
       const d = state.data, q = S.quote ? S.quote.getQ() : [];
       const items = q.map((x) => { const p = D.products.find((y) => y.id === x.id); return p ? `- ${p.code} ${p.name} × ${x.qty}` : ''; }).filter(Boolean).join('\n');
-      const rec = { id: 'q' + Date.now(), createdAt: new Date().toISOString(), status: '신규', lang: EN ? 'EN' : 'KO', source: 'chat', type: d.type, product: '', company: d.company, name: d.name, phone: d.phone || '', email: d.email || '', qty: '', message: d.message, items };
+      const rec = { id: 'q' + Date.now(), createdAt: new Date().toISOString(), status: '신규', lang: EN ? 'EN' : 'KO', source: 'chat', type: d.type, product: d.product || '', category: d.cat || '', company: d.company, name: d.name, title: d.title || '', phone: d.phone || '', email: d.email || '', qty: d.qty || '', message: d.message, items };
       const subject = `[${t('채팅 문의', 'Chat Inquiry · EN')}] ${d.type} - ${d.company}`;
       const sent = !!(S.sendInquiry && await S.sendInquiry(subject, rec));
       try { const arr = JSON.parse(localStorage.getItem(S.INQ_KEY) || '[]'); arr.unshift(rec); localStorage.setItem(S.INQ_KEY, JSON.stringify(arr.slice(0, 500))); } catch (e) {}
       state.flow = null; persist();
       if (sent) await bot(t(`<b>접수되었습니다.</b> 담당자가 확인 후 ${isOpen() ? '곧' : '다음 영업일에'} 회신드리겠습니다. 감사합니다.`, `<b>Submitted.</b> Our team will reply ${isOpen() ? 'shortly' : 'on the next business day'}. Thank you.`), mainMenu());
       else {
-        const body = `[${t('유형', 'Type')}] ${d.type}\n[${t('회사', 'Company')}] ${d.company}\n[${t('담당자', 'Name')}] ${d.name}\n[${t('연락처', 'Contact')}] ${d.email || d.phone}${items ? '\n[' + t('견적 품목', 'Items') + ']\n' + items : ''}\n\n${d.message}`;
+        const body = `[${t('유형', 'Type')}] ${d.type}\n[${t('제품', 'Product')}] ${d.product || t('기타', 'Other')}\n[${t('회사', 'Company')}] ${d.company}\n[${t('담당자', 'Name')}] ${d.name}${d.title ? ' / ' + d.title : ''}\n[${t('이메일', 'Email')}] ${d.email}${d.phone ? '\n[' + t('전화', 'Phone') + '] ' + d.phone : ''}${d.qty ? '\n[' + t('수량·납기', 'Qty') + '] ' + d.qty : ''}${items ? '\n[' + t('견적 품목', 'Items') + ']\n' + items : ''}\n\n${d.message}`;
         const href = `mailto:${D.settings.notifyEmail || D.company.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         await bot(t(`메일 앱으로 내용을 전달합니다. 열리지 않으면 아래 버튼을 눌러주세요.<div class="cm-acts"><a class="cm-btn" href="${esc(href)}">메일로 보내기</a><a class="cm-btn line" href="${S.telHref(D.company.tel)}">전화 ${esc(D.company.tel)}</a></div>`, `Opening your email app. If it doesn't open, use the buttons below.<div class="cm-acts"><a class="cm-btn" href="${esc(href)}">Send by email</a><a class="cm-btn line" href="${S.telHref(D.company.tel)}">Call ${esc(D.company.tel)}</a></div>`), mainMenu());
         location.href = href;
@@ -162,6 +181,8 @@
       if (k === 'cancel') { state.flow = null; persist(); return bot(t('취소했습니다. 다른 도움이 필요하신가요?', 'Cancelled. Anything else I can help with?'), mainMenu()); }
       if (k === 'submit') return submit();
       if (k === 'quote' || k === 'tech') return startFlow(k);
+      if (/^cat:/.test(k) && state.flow && state.flow.step < 0) return pickCat(k.slice(4));
+      if (k === 'skip' && state.flow && state.flow.step >= 0 && STEPS[state.flow.step] && STEPS[state.flow.step][2]) return flowInput('');
       if (k === 'find') { state.flow = { kind: 'find' }; persist(); return bot(t('찾으시는 제품의 <b>모델명·용도·사용온도</b>를 입력해 주세요.<br>예: <i>LNG 피드스루</i>, <i>-196도</i>, <i>PT100</i>', 'Type a <b>model, application or temperature</b>.<br>e.g. <i>LNG feedthrough</i>, <i>-196 temp</i>, <i>PT100</i>'), [['menu', t('처음으로', 'Main menu')]]); }
       if (k === 'faq') return bot(t('자주 묻는 질문입니다.', 'Frequently asked questions:'), (D.faq || []).slice(0, 5).map((f, i) => ['faq' + i, f.q]).concat([['menu', t('처음으로', 'Main menu')]]));
       if (/^faq\d+$/.test(k)) { const f = D.faq[+k.slice(3)]; return bot(esc(f.a), [['quote', t('견적 요청', 'Request a quote')], ['faq', t('다른 질문', 'Other questions')], ['menu', t('처음으로', 'Main menu')]]); }
