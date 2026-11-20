@@ -439,11 +439,11 @@
       e.preventDefault();
       if (form.website && form.website.value) return; // honeypot
       let ok = true;
-      $$('[data-req]', form).forEach((inp) => {
+      $$('[data-req], [name=phone]', form).forEach((inp) => {
         const f = inp.closest('.field') || inp.closest('.agree');
-        let bad = inp.type === 'checkbox' ? !inp.checked : !inp.value.trim();
+        let bad = inp.hasAttribute('data-req') && (inp.type === 'checkbox' ? !inp.checked : !inp.value.trim());
         if (!bad && inp.type === 'email') bad = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inp.value.trim());
-        if (!bad && inp.name === 'phone') bad = !/^[0-9+\-\s()]{8,20}$/.test(inp.value.trim());
+        if (!bad && inp.name === 'phone' && inp.value.trim()) bad = !/^[0-9+\-\s()]{8,20}$/.test(inp.value.trim());
         if (f) f.classList.toggle('invalid', bad);
         if (bad) ok = false;
       });
