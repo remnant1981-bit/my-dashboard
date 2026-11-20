@@ -295,6 +295,7 @@ function onEdit(e) {
   }
   log_(name, e.range.getA1Notation(), o[FIELDS.company], multi ? '(여러 칸)' : head, multi ? '' : e.oldValue, multi ? '' : e.value, who, '시트 직접 수정');
   if (!multi && head === H.owner) stampAck_(sh, c, r, o);
+  if (!multi && head === FIELDS.category && String(e.value || '') !== String(e.oldValue || '') && o[FIELDS.status] !== '완료') e.range.setNote(REASSIGN_NOTE + ' (' + (e.oldValue || '없음') + ' → ' + (e.value || '없음') + ')');
   if (!multi && e.value && head === H.stage && NA_STAGE.test(e.value)) { closeNA_(sh, c, r, o, who); return; }
   if (!multi && e.value && (head === H.replied || head === H.stage)) autoReplied_(sh, c, r, o, who, head === H.stage && repliedStages_().indexOf(e.value) >= 0);
   if (c[H.updated] && e.range.getColumn() !== c[H.updated]) sh.getRange(r, c[H.updated], e.range.getNumRows(), 1).setValue(new Date());
@@ -365,18 +366,30 @@ function downloadMail_(x) {
 }
 
 // ── 새 문의 알림: 담당 팀(설정 탭 알림 메일) + 관리자(NOTIFY_EMAIL) ──
-function newInquiryMail_(sh, c, r) {
+function newInquiryMail_(sh, c, r, reassign) {
   if (overCap_()) return;
   SpreadsheetApp.flush(); // 담당 팀·회신 기한 수식 계산
   const o = rowObj_(sh, c, r), team = String(o[H.team] || ''), mails = teamMails_();
   const to = teamsOf_(team).map((t) => mails[t]).concat(notifyAdmin_()).filter(Boolean).join(',');
   if (!to) return;
-  const body = ['홈페이지 견적·기술 문의가 접수되었습니다.', '',
+  const body = [reassign ? '제품 분류가 바뀌어 담당 팀이 재배정된 문의입니다. (' + reassign + ')' : '홈페이지 견적·기술 문의가 접수되었습니다.', '',
     '담당 팀: ' + (team || '(미지정 — 설정 탭 제품 분류 표 확인)'), '회신 기한: ' + fmtD_(o[H.due]),
     '회사명: ' + (o[FIELDS.company] || ''), '고객 담당자: ' + (o[FIELDS.name] || '') + (o[FIELDS.title] ? ' ' + o[FIELDS.title] : ''),
     '제품 분류: ' + (o[FIELDS.category] || ''), '관심제품: ' + (o[FIELDS.product] || ''), '', '내용:', String(o[FIELDS.message] || '').slice(0, 1500), '',
     '▶ 담당자는 시트 "사내 담당"에 이름을 넣어 주세요 (접수 확인 시각 자동 기록)', rowLink_(r)].join('\n');
-  mail_(to, '[견적 문의] ' + (o[FIELDS.company] || '') + ' — ' + (team || '담당 팀 미지정') + ' · 회신 기한 ' + fmtD_(o[H.due]), body);
+  mail_(to, (reassign ? '[담당 재배정] ' : '[견적 문의] ') + (o[FIELDS.company] || '') + ' — ' + (team || '담당 팀 미지정') + ' · 회신 기한 ' + fmtD_(o[H.due]), body);
+}
+
+// 문의 탭 "제품 분류"를 사람이 바꾸면 onEdit가 메모로 표시 → 1시간마다 새 담당 팀(+관리자)에 재배정 알림 (메일은 단순 onEdit에서 못 보냄)
+const REASSIGN_NOTE = '담당 재배정 알림 대기';
+function reassignWatch_() {
+  const sh = sheet_(), c = cols_(sh), col = c[FIELDS.category], n = nextRow_(sh, c) - 2; if (!col || n < 1) return;
+  const notes = sh.getRange(2, col, n, 1).getNotes();
+  notes.forEach((x, i) => {
+    const s = String(x[0] || ''); if (s.indexOf(REASSIGN_NOTE) !== 0) return;
+    const r = i + 2; newInquiryMail_(sh, c, r, s.slice(REASSIGN_NOTE.length).replace(/^\s*\(|\)\s*$/g, '') || '제품 분류 변경');
+    sh.getRange(r, col).setNote('담당 재배정 알림 발송 ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MM-dd HH:mm'));
+  });
 }
 
 // ── 평일 아침 알림: 담당 미지정·오늘 기한·기한 초과 (팀별 + 관리자 전체) ──
@@ -508,6 +521,7 @@ function hourlyJob() {
   try { syncAccess_(); } catch (err) {}
   try { syncStatus_(); } catch (err) {}
   try { overdueWatch(); } catch (err) {}
+  try { reassignWatch_(); } catch (err) {}
   const now = new Date(), p = PropertiesService.getScriptProperties(), today = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const h = now.getHours(), rh = cfgNum_(CFG.remind, REMIND_HOUR, 0, 23);
   if (h >= rh && h <= rh + 2 && p.getProperty('LAST_DAILY') !== today) { p.setProperty('LAST_DAILY', today); dailyReminder(); }

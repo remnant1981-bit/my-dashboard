@@ -122,8 +122,8 @@
       ['company', () => t('회사명을 알려주세요.', 'What is your company name?')],
       ['name', () => t('담당자 성함을 알려주세요.', 'May I have your name?')],
       ['title', () => t('직급·직책을 알려주세요. <small>(선택)</small>', 'Your job title? <small>(optional)</small>'), true],
-      ['phone', () => t('연락 가능한 <b>전화번호</b>를 입력해 주세요.', 'Please enter your <b>phone number</b>.')],
       ['email', () => t('회신 받으실 <b>이메일</b>을 입력해 주세요.', 'Please enter your <b>email</b> for our reply.')],
+      ['phone', () => t('연락 가능한 <b>전화번호</b>를 입력해 주세요. <small>(선택)</small>', 'Your <b>phone number</b>? <small>(optional)</small>'), true],
       ['qty', () => t('수량·희망 납기를 알려주세요. <small>(선택, 예: 50EA / 2027년 1월)</small>', 'Quantity and desired lead time? <small>(optional, e.g. 50 pcs / Jan 2027)</small>'), true],
       ['message', () => { const q = S.quote ? S.quote.getQ() : []; return t('문의 내용을 자세히 적어주세요. (사용 환경·온도·수량·납기 등)', 'Please describe your request (conditions, temperature, quantity, lead time).') + (q.length ? `<div class="cm-note">${t(`견적함의 ${q.length}개 품목이 함께 전달됩니다.`, `${q.length} item(s) from your quote list will be included.`)}</div>` : ''); }]
     ];
@@ -150,14 +150,14 @@
         await bot(t('아래 버튼에서 제품 분류를 선택해 주세요. 해당 없으면 <b>기타·잘 모르겠음</b>을 눌러 주세요.', 'Please choose a product category below, or <b>Other / not sure</b>.'), catQuick()); return;
       }
       const key = STEPS[f.step][0];
-      if (key === 'phone' && !/^[0-9+\-\s()]{8,20}$/.test(v)) { await bot(t('전화번호 형식으로 입력해 주세요. (예: 010-1234-5678)', 'Please enter a valid phone number.'), stepQuick(f.step)); return; }
+      if (key === 'phone' && v && !/^[0-9+\-\s()]{8,20}$/.test(v)) { await bot(t('전화번호 형식으로 입력해 주세요. (예: 010-1234-5678)', 'Please enter a valid phone number.'), stepQuick(f.step)); return; }
       if (key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { await bot(t('이메일 형식으로 입력해 주세요. (예: name@company.com)', 'Please enter a valid email (name@company.com).'), stepQuick(f.step)); return; }
       if (!v && !STEPS[f.step][2]) { await bot(STEPS[f.step][1](), stepQuick(f.step)); return; }
       state.data[key] = v.slice(0, 1000);
       f.step++; persist();
       if (f.step < STEPS.length) { await bot(STEPS[f.step][1](), stepQuick(f.step)); return; }
       const d = state.data;
-      await bot(`${t('아래 내용으로 접수할까요?', 'Shall I submit the following?')}<dl class="cm-sum"><dt>${t('유형', 'Type')}</dt><dd>${esc(d.type)}</dd><dt>${t('제품', 'Product')}</dt><dd>${esc(d.product || t('기타', 'Other'))}</dd><dt>${t('회사', 'Company')}</dt><dd>${esc(d.company)}</dd><dt>${t('담당자', 'Name')}</dt><dd>${esc(d.name)}${d.title ? ' · ' + esc(d.title) : ''}</dd><dt>${t('전화', 'Phone')}</dt><dd>${esc(d.phone)}</dd><dt>${t('이메일', 'Email')}</dt><dd>${esc(d.email)}</dd>${d.qty ? `<dt>${t('수량·납기', 'Qty / lead time')}</dt><dd>${esc(d.qty)}</dd>` : ''}<dt>${t('내용', 'Message')}</dt><dd>${esc(d.message)}</dd></dl><div class="cm-note">${t('[필수] 개인정보(회사명·성함·연락처) 수집·이용에 동의합니다. 목적: 문의 응대 / 보유: 처리 후 3년', '[Required] I consent to the collection of company, name and contact for responding to this inquiry (retained 3 years).')}</div>`, [['submit', t('동의하고 접수', 'Agree & submit')], ['cancel', t('취소', 'Cancel')]]);
+      await bot(`${t('아래 내용으로 접수할까요?', 'Shall I submit the following?')}<dl class="cm-sum"><dt>${t('유형', 'Type')}</dt><dd>${esc(d.type)}</dd><dt>${t('제품', 'Product')}</dt><dd>${esc(d.product || t('기타', 'Other'))}</dd><dt>${t('회사', 'Company')}</dt><dd>${esc(d.company)}</dd><dt>${t('담당자', 'Name')}</dt><dd>${esc(d.name)}${d.title ? ' · ' + esc(d.title) : ''}</dd><dt>${t('이메일', 'Email')}</dt><dd>${esc(d.email)}</dd>${d.phone ? `<dt>${t('전화', 'Phone')}</dt><dd>${esc(d.phone)}</dd>` : ''}${d.qty ? `<dt>${t('수량·납기', 'Qty / lead time')}</dt><dd>${esc(d.qty)}</dd>` : ''}<dt>${t('내용', 'Message')}</dt><dd>${esc(d.message)}</dd></dl><div class="cm-note">${t('[필수] 개인정보(회사명·성함·연락처) 수집·이용에 동의합니다. 목적: 문의 응대 / 보유: 처리 후 3년', '[Required] I consent to the collection of company, name and contact for responding to this inquiry (retained 3 years).')}</div>`, [['submit', t('동의하고 접수', 'Agree & submit')], ['cancel', t('취소', 'Cancel')]]);
     }
     async function submit() {
       const d = state.data, q = S.quote ? S.quote.getQ() : [];
@@ -169,7 +169,7 @@
       state.flow = null; persist();
       if (sent) await bot(t(`<b>접수되었습니다.</b> 담당자가 확인 후 ${isOpen() ? '곧' : '다음 영업일에'} 회신드리겠습니다. 감사합니다.`, `<b>Submitted.</b> Our team will reply ${isOpen() ? 'shortly' : 'on the next business day'}. Thank you.`), mainMenu());
       else {
-        const body = `[${t('유형', 'Type')}] ${d.type}\n[${t('제품', 'Product')}] ${d.product || t('기타', 'Other')}\n[${t('회사', 'Company')}] ${d.company}\n[${t('담당자', 'Name')}] ${d.name}${d.title ? ' / ' + d.title : ''}\n[${t('전화', 'Phone')}] ${d.phone}\n[${t('이메일', 'Email')}] ${d.email}${d.qty ? '\n[' + t('수량·납기', 'Qty') + '] ' + d.qty : ''}${items ? '\n[' + t('견적 품목', 'Items') + ']\n' + items : ''}\n\n${d.message}`;
+        const body = `[${t('유형', 'Type')}] ${d.type}\n[${t('제품', 'Product')}] ${d.product || t('기타', 'Other')}\n[${t('회사', 'Company')}] ${d.company}\n[${t('담당자', 'Name')}] ${d.name}${d.title ? ' / ' + d.title : ''}\n[${t('이메일', 'Email')}] ${d.email}${d.phone ? '\n[' + t('전화', 'Phone') + '] ' + d.phone : ''}${d.qty ? '\n[' + t('수량·납기', 'Qty') + '] ' + d.qty : ''}${items ? '\n[' + t('견적 품목', 'Items') + ']\n' + items : ''}\n\n${d.message}`;
         const href = `mailto:${D.settings.notifyEmail || D.company.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         await bot(t(`메일 앱으로 내용을 전달합니다. 열리지 않으면 아래 버튼을 눌러주세요.<div class="cm-acts"><a class="cm-btn" href="${esc(href)}">메일로 보내기</a><a class="cm-btn line" href="${S.telHref(D.company.tel)}">전화 ${esc(D.company.tel)}</a></div>`, `Opening your email app. If it doesn't open, use the buttons below.<div class="cm-acts"><a class="cm-btn" href="${esc(href)}">Send by email</a><a class="cm-btn line" href="${S.telHref(D.company.tel)}">Call ${esc(D.company.tel)}</a></div>`), mainMenu());
         location.href = href;
