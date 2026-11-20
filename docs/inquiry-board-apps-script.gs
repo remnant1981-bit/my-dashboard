@@ -423,9 +423,57 @@ function downloadFollowupMail_() {
   const body = list.map((x) => ' - ' + fmtD_(g(x.v, '일시')) + ' | ' + g(x.v, '회사명') + ' | ' + g(x.v, '담당자') + ' | ' + g(x.v, '이메일') + ' | ' + g(x.v, '자료명') + '\n   ' + link(x.row)).join('\n');
   mail_(to, '[다운로드 후속] 미연락 ' + list.length + '건', '연락처를 남기고 자료를 받았지만 아직 연락하지 않은 업체입니다. 연락 후 "후속 상태"를 바꿔 주세요.\n\n' + body);
 }
+// ── 업데이트 확인 요청 (독촉 아님): 처리 중인 문의의 진행 상황이 시트에 최신인지 확인 부탁 ──
+// ① 다음 조치일 지남 ② 같은 상태로 오래 머묾(설정 탭 진행 단계 표 "확인 요청(일)", 단계 미입력은 7일) ③ 회신 후 진행 단계 미입력
+// 기준 = 마지막 수정(최종 업데이트). 같은 건은 3일에 한 번만 포함. 사람이 행을 고치면 자동으로 빠짐
+const NUDGE_EVERY = 3, NUDGE_NOSTAGE = 7;
+function stageDays_() {
+  const m = {};
+  try {
+    const sh = ss_().getSheetByName(SET_SHEET), c = cols_(sh), s = c['진행 단계'], d = c['확인 요청(일)'];
+    if (s && d && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach((r) => { const k = String(r[s - 1]).trim(), n = Number(r[d - 1]); if (k && String(r[d - 1]).trim() !== '' && n > 0) m[k] = n; });
+  } catch (err) {}
+  return m;
+}
+function nudgeItems_() {
+  const sh = sheet_(), c = cols_(sh), n = nextRow_(sh, c) - 2; if (n < 1) return [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = stageDays_(), p = PropertiesService.getScriptProperties();
+  let sent = {}; try { sent = JSON.parse(p.getProperty('NUDGE_SENT') || '{}'); } catch (err) {}
+  const day0 = (d) => (d instanceof Date ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null), gap = (d) => Math.floor((today - d) / 86400000);
+  const out = [], keep = {};
+  sh.getRange(2, 1, n, sh.getLastColumn()).getValues().forEach((v, i) => {
+    const g = (h) => (c[h] ? v[c[h] - 1] : '');
+    if (!g(FIELDS.time) || g(FIELDS.source) === 'download' || g(FIELDS.status) === '완료' || NA_STAGE.test(String(g(H.stage)))) return;
+    const stage = String(g(H.stage) || '').trim(), next = day0(g(H.next)), upd = day0(g(H.updated) || g(FIELDS.time)), why = [];
+    if (next && next < today) why.push('다음 조치일(' + fmtD_(g(H.next)) + ') 지남');
+    const lim = stage ? days[stage] : NUDGE_NOSTAGE;
+    if (upd && lim && gap(upd) >= lim) why.push((stage ? '"' + stage + '" 상태' : '진행 단계 미입력') + ' ' + gap(upd) + '일째 변동 없음');
+    if (g(H.replied) && !stage) why.push('회신일은 있으나 진행 단계 미입력');
+    if (!why.length) return;
+    const key = (g(FIELDS.time) instanceof Date ? g(FIELDS.time).getTime() : String(g(FIELDS.time))) + '|' + g(FIELDS.company), last = sent[key] ? new Date(sent[key]) : null;
+    if (last && gap(last) < NUDGE_EVERY) { keep[key] = sent[key]; return; }
+    keep[key] = today.toISOString();
+    out.push({ row: i + 2, team: String(g(H.team) || '(팀 미지정)'), company: g(FIELDS.company), owner: g(H.owner) || '미지정', stage: stage || '미입력', why: why.join(', ') });
+  });
+  p.setProperty('NUDGE_SENT', JSON.stringify(keep));
+  return out;
+}
+function nudgeBody_(items) {
+  return ['확인 부탁드립니다. (독촉 메일이 아닙니다)', '아래 문의의 진행 상황이 시트에 최신으로 반영되어 있는지 확인해 주시고, 변동이 있으면 업데이트해 주세요.', '진행 단계·처리 메모를 수정하면 목록에서 빠집니다. 변동이 없다면 처리 메모에 "진행 상황 동일"만 남겨 주셔도 됩니다. 다음 조치일이 지난 건은 다음 조치일을 새로 넣어 주세요.', '',
+    items.map((x) => ' - ' + x.company + ' | ' + x.team + ' | 사내 담당 ' + x.owner + ' | 진행 단계 ' + x.stage + '\n   확인 사유: ' + x.why + '\n   ' + rowLink_(x.row)).join('\n')].join('\n');
+}
+function nudgeMail_() {
+  const items = nudgeItems_(); if (!items.length) return;
+  const mails = teamMails_(), teams = {};
+  items.forEach((x) => teamsOf_(x.team).forEach((t) => { (teams[t] = teams[t] || []).push(x); }));
+  Object.keys(teams).forEach((t) => { if (mails[t]) mail_(mails[t], '[업데이트 확인 요청] ' + t + ' ' + teams[t].length + '건', nudgeBody_(teams[t])); });
+  mail_(notifyAdmin_(), '[업데이트 확인 요청] 전체 ' + items.length + '건', nudgeBody_(items));
+}
 function dailyReminder() {
   const day = new Date().getDay(); if (day === 0 || day === 6) return; // 주말 제외
   if (day === 1) { try { downloadFollowupMail_(); } catch (err) {} }
+  try { nudgeMail_(); } catch (err) {}
   const items = remindItems_(); if (!items.length) return;
   const mails = teamMails_(), teams = {};
   items.forEach((x) => teamsOf_(x.team).forEach((t) => { (teams[t] = teams[t] || []).push(x); })); // 공동 담당(예: 영업1팀, 부설연구소)은 각 팀에 모두
