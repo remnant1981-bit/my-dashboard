@@ -39,7 +39,7 @@ const SET_SHEET = '설정';
 const REMIND_HOUR = 9, WATCH_FROM = 8, WATCH_TO = 19, MAIL_CAP = 15, DUP_SEC = 600;
 const CFG = { admin: '관리자 메일', remind: '아침 알림 시각(시)', from: '기한 초과 알림 시작(시)', to: '기한 초과 알림 종료(시)', cap: '1시간 알림 상한(건)', overTeam: '기한 초과 시 담당 팀에도 알림', dlMail: '다운로드 알림 메일', sender: '알림 발신자 이름', mkt: '마케팅 지표 시트 주소' };
 const DL_LABELS = ['일시', '회사명', '담당자', '연락처', '이메일', '자료명', '구분', '후속 상태', '사내 담당', '메모', '받은 페이지', '언어', '유입 경로', '파일', '관심 제품', '담당 팀'];
-const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키', '담당 팀'];
+const CL_LABELS = ['회사명', '구분', '홈페이지', '회사 정보', '고객 담당자', '직급·직책', '연락처', '이메일', '문의 수', '자료 다운로드 수', '최근 문의 유형', '관심제품', '첫 접촉일', '최근 접촉일', '등급', '영업 담당', '메모', '키', '담당 팀', '정렬'];
 // 무료 메일 주소는 회사 홈페이지를 알 수 없으므로 제외
 const FREE_MAIL = /@(gmail|naver|daum|hanmail|nate|kakao|hotmail|outlook|live|yahoo|icloud|me|korea|empas|paran|chol|dreamwiz)\./i;
 const LOG_LABELS = ['일시', '시트', '셀', '회사명', '항목', '이전 값', '새 값', '수정자', '경로'];
@@ -108,6 +108,34 @@ function catTeams_(names) {
     });
   } catch (err) {}
   return out.join(', ') || String(cfg_()['제품 미선택 문의 담당 팀'] || '').trim();
+}
+// 관심 업체 정렬·숨김 (1시간마다): 1 견적·문의 → 2 자료 다운로드 → 3 실제 고객 아님(문의 "해당 없음" 회사·다운로드 "정보 오류" 이메일), 같은 그룹은 최근 접촉일 최신순
+function sortClients_() {
+  const sh = clSheet_(), c = cols_(sh), n = sh.getLastRow() - 1;
+  if (n < 2 || !c['정렬'] || !c['회사명']) return;
+  const na = {}, bad = {};
+  const q = sheet_(), qc = cols_(q), qn = nextRow_(q, qc) - 2;
+  if (qn > 0) q.getRange(2, 1, qn, q.getLastColumn()).getValues().forEach((v) => { if (NA_STAGE.test(String(v[qc[H.stage] - 1] || ''))) na[key_(v[qc[FIELDS.company] - 1])] = 1; });
+  const dl = dlSheet_(), dc = cols_(dl), dn = nextRowBy_(dl, dc, '일시') - 2;
+  if (dn > 0 && dc['후속 상태'] && dc['이메일']) dl.getRange(2, 1, dn, dl.getLastColumn()).getValues().forEach((v) => { if (/^정보 오류/.test(String(v[dc['후속 상태'] - 1] || ''))) bad[String(v[dc['이메일'] - 1] || '').toLowerCase().trim()] = 1; });
+  const rng = sh.getRange(2, 1, n, sh.getLastColumn()), vals = rng.getValues();
+  const rank = vals.map((v) => {
+    if (!String(v[c['회사명'] - 1] || '').trim()) return [''];
+    const em = c['이메일'] ? String(v[c['이메일'] - 1] || '').toLowerCase().trim() : '';
+    if (na[key_(v[c['회사명'] - 1])] || (em && bad[em])) return [3];
+    return [c['문의 수'] && Number(v[c['문의 수'] - 1]) > 0 ? 1 : 2];
+  });
+  const old = vals.map((v) => [v[c['정렬'] - 1]]);
+  if (JSON.stringify(old) !== JSON.stringify(rank)) sh.getRange(2, c['정렬'], n, 1).setValues(rank);
+  const f = sh.getFilter();
+  if (f) { // 필터가 켜져 있으면 필터 정렬 + "3(실제 고객 아님)" 숨김 다시 적용
+    if (c['최근 접촉일']) f.sort(c['최근 접촉일'], false);
+    f.sort(c['정렬'], true);
+    f.setColumnFilterCriteria(c['정렬'], SpreadsheetApp.newFilterCriteria().setHiddenValues(['3']).build());
+  } else {
+    const specs = [{ column: c['정렬'], ascending: true }]; if (c['최근 접촉일']) specs.push({ column: c['최근 접촉일'], ascending: false });
+    rng.sort(specs);
+  }
 }
 // 관심 업체 "담당 팀": 비어 있을 때만 채움 (사람이 바꾼 값 유지)
 function clTeam_(company, team) {
@@ -570,6 +598,7 @@ function hourlyJob() {
   try { syncStatus_(); } catch (err) {}
   try { overdueWatch(); } catch (err) {}
   try { reassignWatch_(); } catch (err) {}
+  try { sortClients_(); } catch (err) {}
   const now = new Date(), p = PropertiesService.getScriptProperties(), today = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const h = now.getHours(), rh = cfgNum_(CFG.remind, REMIND_HOUR, 0, 23);
   if (h >= rh && h <= rh + 2 && p.getProperty('LAST_DAILY') !== today) { p.setProperty('LAST_DAILY', today); dailyReminder(); }
