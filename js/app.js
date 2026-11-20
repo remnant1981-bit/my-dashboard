@@ -62,7 +62,7 @@
     return ids.join(',');
   }
   async function sendInquiry(subject, data) {
-    const cat = inquiryCats(data); if (cat) data = Object.assign({}, data, { category: cat });
+    const cat = [data.category, inquiryCats(data)].filter(Boolean).join(',').split(',').filter((x, i, a) => x && a.indexOf(x) === i).join(','); if (cat) data = Object.assign({}, data, { category: cat });
     saveToSheet(subject, data);
     const st = D.settings || {}, ep = (st.formEndpoint || '').trim(), key = (st.formBackupKey || '').trim();
     const viaEndpoint = () => ep && postJSON(ep, Object.assign({ _subject: subject, subject, _replyto: data.email || undefined, _template: 'table', _captcha: 'false' }, data));
