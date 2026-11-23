@@ -109,6 +109,29 @@ function catTeams_(names) {
   } catch (err) {}
   return out.join(', ') || String(cfg_()['제품 미선택 문의 담당 팀'] || '').trim();
 }
+// 문의 탭 정렬 (1시간마다): 신규 → 처리중 (회신 기한 빠른 순) → 완료 (최근 접수 순) → 해당 없음. 숨김 열 "정렬"에 순위 값 기록
+// 이미 순서가 맞으면 아무것도 하지 않음 (입력 중인 행이 움직이지 않도록)
+function sortInquiries_() {
+  const sh = sheet_(), c = cols_(sh), n = nextRow_(sh, c) - 2;
+  if (n < 2 || !c['정렬'] || !c[FIELDS.status] || !c[FIELDS.time]) return;
+  const day = (d) => (d instanceof Date ? Math.floor(d.getTime() / 86400000) : 0);
+  const vals = sh.getRange(2, 1, n, sh.getLastColumn()).getValues();
+  const keys = vals.map((v) => {
+    const st = String(v[c[FIELDS.status] - 1] || ''), na = NA_STAGE.test(String(c[H.stage] ? v[c[H.stage] - 1] : ''));
+    const rank = na ? 4 : st === '완료' ? 3 : st === '처리중' ? 2 : 1;
+    const due = day(c[H.due] ? v[c[H.due] - 1] : null) || 99998, at = day(v[c[FIELDS.time] - 1]);
+    return [rank * 100000 + (rank <= 2 ? due : 99999 - at)];
+  });
+  const old = vals.map((v) => [v[c['정렬'] - 1]]);
+  if (JSON.stringify(old) !== JSON.stringify(keys)) sh.getRange(2, c['정렬'], n, 1).setValues(keys);
+  let sorted = true; for (let i = 1; i < keys.length; i++) if (keys[i][0] < keys[i - 1][0]) { sorted = false; break; }
+  if (sorted) return;
+  const lock = LockService.getScriptLock(); if (!lock.tryLock(5000)) return; // 접수 중이면 다음 정시에
+  try {
+    const f = sh.getFilter();
+    if (f) f.sort(c['정렬'], true); else sh.getRange(2, 1, n, sh.getLastColumn()).sort({ column: c['정렬'], ascending: true });
+  } finally { lock.releaseLock(); }
+}
 // 관심 업체 정렬·숨김 (1시간마다): 1 견적·문의 → 2 자료 다운로드 → 3 실제 고객 아님(문의 "해당 없음" 회사·다운로드 "정보 오류" 이메일), 같은 그룹은 최근 접촉일 최신순
 function sortClients_() {
   const sh = clSheet_(), c = cols_(sh), n = sh.getLastRow() - 1;
@@ -172,7 +195,9 @@ function mail_(to, subject, body) {
   let name = 'SMG 홈페이지 문의'; try { name = String(cfg_()[CFG.sender] || '').trim() || name; } catch (err) {}
   try { MailApp.sendEmail({ to: to, subject: String(subject).slice(0, 200), body: body, name: name }); return true; } catch (err) { return false; }
 }
-function rowLink_(r) { return ss_().getUrl() + '#gid=' + sheet_().getSheetId() + '&range=A' + r; }
+// 문의 탭은 1시간마다 정렬되어 행 번호가 바뀌므로, 메일 링크는 현황 탭으로 연결 (현황에서 회사명 클릭 → 해당 행)
+function boardLink_() { const b = ss_().getSheetByName('현황'); return ss_().getUrl() + '#gid=' + (b ? b.getSheetId() : sheet_().getSheetId()); }
+function rowLink_(r) { return boardLink_(); }
 function stampAck_(sh, c, r, o) { // 사내 담당이 처음 들어오면 접수 확인 시각 기록
   if (c[H.ack] && o[H.owner] && !o[H.ack]) sh.getRange(r, c[H.ack]).setValue(new Date());
 }
@@ -404,7 +429,7 @@ function newInquiryMail_(sh, c, r, reassign) {
     '담당 팀: ' + (team || '(미지정 — 설정 탭 제품 분류 표 확인)'), '회신 기한: ' + fmtD_(o[H.due]),
     '회사명: ' + (o[FIELDS.company] || ''), '고객 담당자: ' + (o[FIELDS.name] || '') + (o[FIELDS.title] ? ' ' + o[FIELDS.title] : ''),
     '제품 분류: ' + (o[FIELDS.category] || ''), '관심제품: ' + (o[FIELDS.product] || ''), '', '내용:', String(o[FIELDS.message] || '').slice(0, 1500), '',
-    '▶ 담당자는 시트 "사내 담당"에 이름을 넣어 주세요 (접수 확인 시각 자동 기록)', rowLink_(r)].join('\n');
+    '▶ 담당자는 시트 "사내 담당"에 이름을 넣어 주세요 (접수 확인 시각 자동 기록)', '▶ 현황 탭에서 회사명을 누르면 해당 행으로 이동합니다', boardLink_()].join('\n');
   mail_(to, (reassign ? '[담당 재배정] ' : '[견적 문의] ') + (o[FIELDS.company] || '') + ' — ' + (team || '담당 팀 미지정') + ' · 회신 기한 ' + fmtD_(o[H.due]), body);
 }
 
@@ -436,8 +461,8 @@ function remindItems_() {
 function remindBody_(items) {
   const order = ['⛔ 기한 초과', '⚠ 오늘 기한', '담당 미지정'];
   return order.map((k) => { const l = items.filter((x) => x.kind === k); if (!l.length) return '';
-    return '■ ' + k + ' (' + l.length + '건)\n' + l.map((x) => ' - ' + x.company + ' | 회신 기한 ' + x.due + ' | ' + x.team + ' | 사내 담당 ' + x.owner + (x.stage ? ' | ' + x.stage : '') + '\n   ' + rowLink_(x.row)).join('\n'); })
-    .filter(Boolean).join('\n\n') + '\n\n회신 후 "회신일"을 넣으면 목록에서 빠집니다. 진행 단계 입력은 선택입니다.';
+    return '■ ' + k + ' (' + l.length + '건)\n' + l.map((x) => ' - ' + x.company + ' | 회신 기한 ' + x.due + ' | ' + x.team + ' | 사내 담당 ' + x.owner + (x.stage ? ' | ' + x.stage : '')).join('\n'); })
+    .filter(Boolean).join('\n\n') + '\n\n▶ 현황 탭에서 회사명을 누르면 해당 행으로 이동합니다\n' + boardLink_() + '\n\n회신 후 "회신일"을 넣으면 목록에서 빠집니다. 진행 단계 입력은 선택입니다.';
 }
 // ── 월요일 아침: 연락처 남긴 "미연락" 다운로드 → 관리자 ──
 function downloadFollowupMail_() {
@@ -489,7 +514,7 @@ function nudgeItems_() {
 }
 function nudgeBody_(items) {
   return ['확인 부탁드립니다. (독촉 메일이 아닙니다)', '아래 문의의 진행 상황이 시트에 최신으로 반영되어 있는지 확인해 주시고, 변동이 있으면 업데이트해 주세요.', '진행 단계·처리 메모를 수정하면 목록에서 빠집니다. 변동이 없다면 처리 메모에 "진행 상황 동일"만 남겨 주셔도 됩니다. 다음 조치일이 지난 건은 다음 조치일을 새로 넣어 주세요.', '',
-    items.map((x) => ' - ' + x.company + ' | ' + x.team + ' | 사내 담당 ' + x.owner + ' | 진행 단계 ' + x.stage + '\n   확인 사유: ' + x.why + '\n   ' + rowLink_(x.row)).join('\n')].join('\n');
+    items.map((x) => ' - ' + x.company + ' | ' + x.team + ' | 사내 담당 ' + x.owner + ' | 진행 단계 ' + x.stage + '\n   확인 사유: ' + x.why).join('\n'), '', '▶ 현황 탭에서 회사명을 누르면 해당 행으로 이동합니다', boardLink_()].join('\n');
 }
 function nudgeMail_() {
   const items = nudgeItems_(); if (!items.length) return;
@@ -599,6 +624,7 @@ function hourlyJob() {
   try { overdueWatch(); } catch (err) {}
   try { reassignWatch_(); } catch (err) {}
   try { sortClients_(); } catch (err) {}
+  try { sortInquiries_(); } catch (err) {}
   const now = new Date(), p = PropertiesService.getScriptProperties(), today = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const h = now.getHours(), rh = cfgNum_(CFG.remind, REMIND_HOUR, 0, 23);
   if (h >= rh && h <= rh + 2 && p.getProperty('LAST_DAILY') !== today) { p.setProperty('LAST_DAILY', today); dailyReminder(); }
