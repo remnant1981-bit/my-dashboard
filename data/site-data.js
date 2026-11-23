@@ -32,7 +32,7 @@ window.SMG_DEFAULT_DATA = {
     "gaId": "G-FV1FMG817S",
     "sheetEndpoint": "https://script.google.com/macros/s/AKfycbzqr7nz4NufAJ3YWmg_76RiFBm8hlr6MAR36CYp5xmDBVZV0qi6zzTVllYlCkZlPPuP4g/exec",
     "downloadGate": "required",
-    "downloadWorkEmail": true,
+    "downloadWorkEmail": false,
     "videoUrl": "https://youtu.be/HN5ZVgWYOSM",
     "videoUrlEn": "https://youtu.be/0RrL5J4bvDc",
     "videoTitle": "에스엠지 홍보영상",
